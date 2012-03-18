@@ -60,6 +60,7 @@ function! s:initialize_buffer()"{{{
   setlocal nonumber
 
   setlocal filetype=gosh-repl
+  setlocal syntax=scheme.gosh-repl
 
   autocmd BufUnload <buffer> call s:unload_buffer()
   autocmd CursorHold <buffer> call s:check_output(500)

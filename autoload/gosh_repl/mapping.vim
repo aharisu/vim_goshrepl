@@ -48,6 +48,9 @@ function! s:execute_line(is_insert)"{{{
   call gosh_repl#execute_line(context)
 
   execute "normal o"
+  let line = line('.')
+  let indent = lispindent(line)
+  call setline(line, repeat(' ', indent) .  getline(line))
 
   call gosh_repl#check_output(context,66)
 
