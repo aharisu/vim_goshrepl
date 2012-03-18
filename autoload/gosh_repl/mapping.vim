@@ -159,14 +159,26 @@ function! s:insert_enter()"{{{
   startinsert
 endfunction"}}}
 
-function! s:line_replace_input_history(prev)
+function! s:line_replace_input_history(prev)"{{{
   let context = gosh_repl#ui#get_context(bufnr('%'))
+  let lines_len = len(context.lines)
+  if lines_len == 0
+    return
+  endif
 
   let index = context._input_history_index + ((a:prev == 1) ? 1 : -1)
 
   if index == 0
     let text = ''
-  elseif index > 0 && index <= len(context.lines)
+  elseif index > 0
+    if index <= lines_len
+      let text = context.lines[-index]
+    else
+      let text = ''
+      let index = 0
+    endif
+  else " index < 0
+    let index = lines_len
     let text = context.lines[-index]
   endif
 
@@ -176,7 +188,7 @@ function! s:line_replace_input_history(prev)
     call setline(line_num, gosh_repl#get_prompt(context, line_num) . text)
     let context._input_history_index = index
   endif
-endfunction
+endfunction"}}}
 
 "
 "Util
