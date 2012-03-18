@@ -33,12 +33,13 @@ function! gosh_repl#ui#open_new_repl()"{{{
   if bufnr == 0
     silent! execute s:default_open_cmd
     enew
-    call s:initialize_buffer()
     let bufnr = bufnr('%')
 
     let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
     let context.context__key = bufnr
     let s:gosh_context[bufnr] = context
+
+    call s:initialize_buffer()
     call gosh_repl#check_output(context, 50)
   else
     call cursor(line('$'), col('$'))

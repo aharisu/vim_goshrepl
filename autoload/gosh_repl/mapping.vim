@@ -35,12 +35,19 @@ function! gosh_repl#mapping#initialize()
   nmap <buffer> A :<C-u>call <SID>append_end()<CR>
   nmap <buffer> i :<C-u>call <SID>insert_enter()<CR>
   nmap <buffer> a :<C-u>call <SID>append_enter()<CR>
+  nmap <buffer><silent> <C-p> :<C-u>call <SID>line_replace_input_history(1)<CR>
+  nmap <buffer><silent> <C-n> :<C-u>call <SID>line_replace_input_history(0)<CR>
 
   inoremap <buffer><silent> <CR> 
         \ <ESC>:<C-u>call <SID>execute_line(1)<CR>
   inoremap <buffer><expr> <BS> <SID>delete_backword_char()
   inoremap <buffer><expr> <C-h> <SID>delete_backword_char()
   inoremap <buffer><expr> <C-u> <SID>delete_backword_line()
+  inoremap <buffer><silent> <C-p> <ESC>:<C-u>call <SID>line_replace_input_history(1)<CR>:startinsert!<CR>
+  inoremap <buffer><silent> <C-n> <ESC>:<C-u>call <SID>line_replace_input_history(0)<CR>:startinsert!<CR>
+
+  let context = gosh_repl#ui#get_context(bufnr('%'))
+  let context._input_history_index = 0
 endfunction
 
 function! s:execute_line(is_insert)"{{{
@@ -53,6 +60,8 @@ function! s:execute_line(is_insert)"{{{
   call setline(line, repeat(' ', indent) .  getline(line))
 
   call gosh_repl#check_output(context,66)
+
+  let context._input_history_index = 0
 
   if a:is_insert
     startinsert!
@@ -150,6 +159,24 @@ function! s:insert_enter()"{{{
   startinsert
 endfunction"}}}
 
+function! s:line_replace_input_history(prev)
+  let context = gosh_repl#ui#get_context(bufnr('%'))
+
+  let index = context._input_history_index + ((a:prev == 1) ? 1 : -1)
+
+  if index == 0
+    let text = ''
+  elseif index > 0 && index <= len(context.lines)
+    let text = context.lines[-index]
+  endif
+
+  if exists('text')
+    let line_num = line('.')
+
+    call setline(line_num, gosh_repl#get_prompt(context, line_num) . text)
+    let context._input_history_index = index
+  endif
+endfunction
 
 "
 "Util

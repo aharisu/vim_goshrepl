@@ -65,7 +65,7 @@ endfunction"}}}
 function! s:get_line_text(context, num_line)"{{{
   let line = getline(a:num_line)
 
-  return line[len(gosh_repl#get_prompt(a:context, a:num_line)) : ] . "\n"
+  return line[len(gosh_repl#get_prompt(a:context, a:num_line)) : ]
 endfunction"}}}
 
 function! gosh_repl#execute_text(context, text)"{{{
@@ -79,7 +79,13 @@ function! gosh_repl#execute_text(context, text)"{{{
   "TODO how do I handle the empty line
   call add(a:context.lines, a:text)
 
-  call a:context.proc.stdin.write(a:text)
+  if a:text !~# "\n$"
+    let text = a:text . "\n"
+  else
+    let text = a:text
+  endif
+
+  call a:context.proc.stdin.write(text)
 endfunction"}}}
 
 function! gosh_repl#check_output(context, ...)"{{{
