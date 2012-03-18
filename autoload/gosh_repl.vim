@@ -59,10 +59,10 @@ endfunction
 
 function! gosh_repl#execute_line(context)"{{{
   let line = line('.')
-  call gosh_repl#execute_text(a:context, s:get_line_text(a:context, line))
+  call gosh_repl#execute_text(a:context, gosh_repl#get_line_text(a:context, line))
 endfunction"}}}
 
-function! s:get_line_text(context, num_line)"{{{
+function! gosh_repl#get_line_text(context, num_line)"{{{
   let line = getline(a:num_line)
 
   return line[len(gosh_repl#get_prompt(a:context, a:num_line)) : ]
