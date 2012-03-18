@@ -31,10 +31,10 @@ function! gosh_repl#mapping#initialize()
         \:<C-u>call <SID>execute_line(0)<CR>
   nmap <buffer> cc <Plug>(change_line)
   nmap <buffer> dd <Plug>(change_line)<ESC>
-  nmap <buffer> I :<C-u>call <SID>insert_head()<CR>
-  nmap <buffer> A :<C-u>call <SID>append_end()<CR>
-  nmap <buffer> i :<C-u>call <SID>insert_enter()<CR>
-  nmap <buffer> a :<C-u>call <SID>append_enter()<CR>
+  nmap <buffer><silent> I :<C-u>call <SID>insert_head()<CR>
+  nmap <buffer><silent> A :<C-u>call <SID>append_end()<CR>
+  nmap <buffer><silent> i :<C-u>call <SID>insert_enter()<CR>
+  nmap <buffer><silent> a :<C-u>call <SID>append_enter()<CR>
   nmap <buffer><silent> <C-p> :<C-u>call <SID>line_replace_input_history(1)<CR>
   nmap <buffer><silent> <C-n> :<C-u>call <SID>line_replace_input_history(0)<CR>
 
