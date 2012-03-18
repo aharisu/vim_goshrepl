@@ -60,7 +60,6 @@ endfunction
 function! gosh_repl#execute_line(context)"{{{
   let line = line('.')
   call gosh_repl#execute_text(a:context, s:get_line_text(a:context, line))
-  let a:context.prompt_histroy[line] = ''
 endfunction"}}}
 
 function! s:get_line_text(context, num_line)"{{{
