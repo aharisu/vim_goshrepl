@@ -47,47 +47,26 @@ function! gosh_repl#mapping#initialize()
   inoremap <buffer><silent> <C-n> <ESC>:<C-u>call <SID>line_replace_input_history(0)<CR>:startinsert!<CR>
 
   vnoremap <buffer><silent> <CR> :call <SID>execute_block()<CR>
-
-  let context = gosh_repl#ui#get_context(bufnr('%'))
-  let context._input_history_index = 0
 endfunction
 
 function! s:execute_line(is_insert)"{{{
-  let context = gosh_repl#ui#get_context(bufnr('%'))
-  call gosh_repl#execute_line(context)
+  let bufnr = bufnr('%')
+  let context = gosh_repl#ui#get_context(bufnr)
+  let text = gosh_repl#get_line_text(context, line('.'))
 
-  execute "normal o"
-  let line = line('.')
-  let indent = lispindent(line)
-  call setline(line, repeat(' ', indent) .  getline(line))
-
-  call gosh_repl#check_output(context,66)
-
-  let context._input_history_index = 0
-
-  if a:is_insert
-    startinsert!
-  endif
+  call gosh_repl#ui#execute(text, bufnr, a:is_insert)
 endfunction"}}}
 
 function! s:execute_block() range"{{{
-  let context = gosh_repl#ui#get_context(bufnr('%'))
+  let bufnr = bufnr('%')
+  let context = gosh_repl#ui#get_context(bufnr)
 
   let text = ''
   for line in range(a:firstline, a:lastline)
     let text .= ' ' . substitute(gosh_repl#get_line_text(context, line), '^\s*', '', '')
   endfor
 
-  call gosh_repl#execute_text(context, text)
-
-  execute ":$ normal o"
-  let line = line('.')
-  let indent = lispindent(line)
-  call setline(line, repeat(' ', indent) .  getline(line))
-
-  call gosh_repl#check_output(context,66)
-
-  let context._input_history_index = 0
+  call gosh_repl#ui#execute(text, bufnr, 0)
 endfunction"}}}
 
 function! s:change_line()"{{{

@@ -37,6 +37,7 @@ function! gosh_repl#ui#open_new_repl()"{{{
 
     let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
     let context.context__key = bufnr
+    let context._input_history_index = 0
     let s:gosh_context[bufnr] = context
 
     call s:initialize_buffer()
@@ -111,6 +112,47 @@ function! gosh_repl#ui#clear_buffer()"{{{
   endif
 endfunction"}}}
 
+function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
+  let context = gosh_repl#ui#get_context(a:bufnr)
+
+  if bufnr('%') != a:bufnr
+    call s:mark_back_to_window('_execute')
+    execute a:bufnr 'wincmd w'
+  endif
+
+  call gosh_repl#execute_text(context, a:text)
+
+  execute ":$ normal o"
+  let line = line('.')
+  let indent = lispindent(line)
+  call setline(line, repeat(' ', indent) .  getline(line))
+
+  call gosh_repl#check_output(context,66)
+
+  let context._input_history_index = 0
+
+  if bufnr('%') != a:bufnr
+    call s:back_to_marked_window('_execute')
+  elseif a:is_insert
+    startinsert!
+  endif
+endfunction"}}}
+
+function! gosh_repl#ui#send_text(text)"{{{
+  let mode = mode()
+
+  call s:mark_back_to_window('send_text')
+
+  call gosh_repl#ui#open_new_repl()
+  call gosh_repl#ui#execute(a:text, bufnr('%'), 0)
+
+  call s:back_to_marked_window('send_text')
+
+  if mode ==# 'n'
+    stopinsert
+  endif
+endfunction"}}}
+
 "
 "window operation
 
@@ -128,21 +170,24 @@ function! s:move_to_window(filetype)"{{{
   return 0
 endfunction"}}}
 
-function! s:mark_back_to_window()"{{{
-  let w:ref_back = 1
+function! s:mark_back_to_window(...)"{{{
+  let mark = a:0 > 0 ? a:1 : 'ref_back'
+  execute 'let w:' . mark . ' = 1'
 endfunction"}}}
 
 function! s:unmark_back_to_window()"{{{
   unlet! w:ref_back
 endfunction"}}}
 
-function! s:back_to_marked_window()"{{{
+function! s:back_to_marked_window(...)"{{{
+  let mark = a:0 > 0 ? a:1 : 'ref_back'
+
   for t in range(1, tabpagenr('$'))
     for w in range(1, winnr('$'))
-      if gettabwinvar(t, w, 'ref_back')
+      if gettabwinvar(t, w, mark)
         execute 'tabnext' t
         execute w 'wincmd w'
-        unlet! w:ref_back
+        execute 'unlet! w:' . mark
       endif
     endfor
   endfor
