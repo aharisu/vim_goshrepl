@@ -33,6 +33,7 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 command! -nargs=0 GoshREPL :call gosh_repl#ui#open_new_repl()
+command! -nargs=0 GoshREPLClear :call gosh_repl#ui#clear_buffer()
 
 let &cpo = s:save_cpo
 

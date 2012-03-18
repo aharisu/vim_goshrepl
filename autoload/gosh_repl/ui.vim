@@ -35,17 +35,16 @@ function! gosh_repl#ui#open_new_repl()"{{{
     enew
     call s:initialize_buffer()
     let bufnr = bufnr('%')
+
+    let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
+    let context.context__key = bufnr
+    let s:gosh_context[bufnr] = context
+    call gosh_repl#check_output(context, 50)
   else
-    "cleanup gosh repl
-    call s:cleanup_buffer(bufnr)
+    call cursor(line('$'), col('$'))
   endif
 
-  startinsert
-
-  let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
-  let context.context__key = bufnr
-  let s:gosh_context[bufnr] = context
-  call gosh_repl#check_output(context, 50)
+  startinsert!
 endfunction"}}}
 
 function! s:exit_callback(context)"{{{
@@ -53,16 +52,6 @@ function! s:exit_callback(context)"{{{
   if has_key(s:gosh_context, a:context.context__key)
     unlet s:gosh_context[a:context.context__key]
   endif
-endfunction"}}}
-
-function! s:cleanup_buffer(bufnr)"{{{
-  if has_key(s:gosh_context, a:bufnr)
-    call gosh_repl#destry_gosh_context(s:gosh_context[a:bufnr])
-
-    unlet s:gosh_context[a:bufnr]
-  endif
-
-  % delete _
 endfunction"}}}
 
 function! s:initialize_buffer()"{{{
@@ -98,6 +87,25 @@ endfunction"}}}
 function! s:check_output(timeout)"{{{
   if has_key(s:gosh_context, bufnr('%'))
     call gosh_repl#check_output(s:gosh_context[bufnr('%')], a:timeout)
+  endif
+endfunction"}}}
+
+function! gosh_repl#ui#clear_buffer()"{{{
+  if &filetype == 'gosh-repl'
+    % delete _
+
+    let bufnr = bufnr('%')
+    if has_key(s:gosh_context, bufnr)
+      call gosh_repl#destry_gosh_context(s:gosh_context[bufnr])
+
+      let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
+      let context.context__key = bufnr
+      let s:gosh_context[bufnr] = context
+
+      call gosh_repl#check_output(context, 50)
+    endif
+  else
+    echohl WarningMsg | echomsg 'use only in the GoshREPL buffer' | echohl None
   endif
 endfunction"}}}
 
