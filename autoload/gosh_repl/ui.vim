@@ -25,10 +25,11 @@
 "=============================================================================
 
 let s:gosh_context = {}
+
 let s:default_open_cmd = '15:split'
 
 function! gosh_repl#ui#open_new_repl()"{{{
-  let bufnr = s:move_to_window('gosh-repl')
+  let bufnr = s:move_to_window('filetype', 'gosh-repl')
 
   if bufnr == 0
     silent! execute s:default_open_cmd
@@ -177,13 +178,65 @@ function! gosh_repl#ui#send_text(text)"{{{
   endif
 endfunction"}}}
 
+function! gosh_repl#ui#show_all_line()
+  let gosh_repl_bufnr = s:find_buffer('filetype', 'gosh-repl')
+  if gosh_repl_bufnr == 0
+    echohl WarningMsg | echomsg 'gosh-repl buffer not found.' | echohl None
+  else
+    let nr = s:move_to_window('let', 'gosh_repl_all_line')
+    if nr == 0
+      execute s:calc_split_window_direction(bufnr('%')) ' split'
+      enew
+
+      "buffer initialize
+      edit `='[gosh REPL lines]'`
+      setlocal buftype=nofile noswapfile
+      setlocal bufhidden=delete
+      setlocal filetype=scheme
+      setlocal syntax=scheme
+
+      "mark lines buffer 
+      let b:gosh_repl_all_line = 1
+    else
+      % delete _
+    endif
+
+    let context = gosh_repl#ui#get_context(gosh_repl_bufnr)
+    let line = 1
+    for text in context.lines
+      let indent = lispindent(line)
+      call setline(line, repeat(' ', indent) . s:strtrim(text))
+      let line += 1
+      execute 'normal o'
+      stopinsert
+    endfor
+    execute line 'delete _'
+  endif
+endfunction
+
+function! s:calc_split_window_direction(bufnr)
+  return winwidth(a:bufnr) * 2 < winheight(a:bufnr) * 5 ? '' : 'vertical'
+endfunction
+
 "
 "window operation
 
-function! s:move_to_window(filetype)"{{{
+function! s:move_to_window(kind, val)"{{{
   for i in range(0, winnr('$'))
     let n = winbufnr(i)
-    if getbufvar(n, '&filetype') ==# a:filetype
+    let found = 0
+
+    if a:kind ==# 'filetype'
+      if getbufvar(n, '&filetype') ==# a:val
+        let found = 1
+      endif
+    elseif a:kind ==# 'let'
+      if getbufvar(n, a:val)
+        let found = 1
+      endif
+    endif
+
+    if found
       if i != 0
         execute i 'wincmd w'
       endif
@@ -193,6 +246,29 @@ function! s:move_to_window(filetype)"{{{
 
   return 0
 endfunction"}}}
+
+function! s:find_buffer(kind, val)
+  for i in range(0, winnr('$'))
+    let n = winbufnr(i)
+
+    let found = 0
+    if a:kind ==# 'filetype'
+      if getbufvar(n, '&filetype') ==# a:val
+        let found = 1
+      endif
+    elseif a:kind ==# 'let'
+      if getbufvar(n, a:val)
+        let found = 1
+      endif
+    endif
+
+    if found
+      return n
+    endif
+  endfor
+
+  return 0
+endfunction
 
 function! s:mark_back_to_window(...)"{{{
   let mark = a:0 > 0 ? a:1 : 'ref_back'
@@ -229,5 +305,9 @@ endfunction
 function! s:funcref(funcname)
   return function(s:SID_PREFIX() . a:funcname)
 endfunction"}}}
+
+function! s:strtrim(text)
+  return substitute(copy(a:text), '^\s*', '', '')
+endfunction
 
 " vim: foldmethod=marker
