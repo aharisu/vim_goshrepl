@@ -190,7 +190,7 @@ function! gosh_repl#ui#send_text(text)"{{{
   endif
 endfunction"}}}
 
-function! gosh_repl#ui#show_all_line()
+function! gosh_repl#ui#show_all_line()"{{{
   let gosh_repl_bufnr = s:find_buffer('filetype', 'gosh-repl')
   if gosh_repl_bufnr == 0
     echohl WarningMsg | echomsg 'gosh-repl buffer not found.' | echohl None
@@ -224,11 +224,11 @@ function! gosh_repl#ui#show_all_line()
     endfor
     execute line 'delete _'
   endif
-endfunction
+endfunction"}}}
 
-function! s:calc_split_window_direction(bufnr)
+function! s:calc_split_window_direction(bufnr)"{{{
   return winwidth(a:bufnr) * 2 < winheight(a:bufnr) * 5 ? '' : 'vertical'
-endfunction
+endfunction"}}}
 
 "
 "window operation
@@ -259,7 +259,7 @@ function! s:move_to_window(kind, val)"{{{
   return 0
 endfunction"}}}
 
-function! s:find_buffer(kind, val)
+function! s:find_buffer(kind, val)"{{{
   for i in range(0, winnr('$'))
     let n = winbufnr(i)
 
@@ -280,7 +280,7 @@ function! s:find_buffer(kind, val)
   endfor
 
   return 0
-endfunction
+endfunction"}}}
 
 function! s:mark_back_to_window(...)"{{{
   let mark = a:0 > 0 ? a:1 : 'ref_back'
@@ -318,8 +318,8 @@ function! s:funcref(funcname)
   return function(s:SID_PREFIX() . a:funcname)
 endfunction"}}}
 
-function! s:strtrim(text)
+function! s:strtrim(text)"{{{
   return substitute(copy(a:text), '^\s*', '', '')
-endfunction
+endfunction"}}}
 
 " vim: foldmethod=marker
