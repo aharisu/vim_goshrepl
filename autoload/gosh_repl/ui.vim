@@ -58,6 +58,7 @@ function! s:exit_callback(context)"{{{
 endfunction"}}}
 
 function! s:initialize_buffer()"{{{
+  edit `='[gosh REPL]'`
   setlocal buftype=nofile noswapfile
   setlocal bufhidden=delete
   setlocal nonumber
