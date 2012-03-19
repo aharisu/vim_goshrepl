@@ -96,7 +96,16 @@ function! s:check_output(timeout)"{{{
 endfunction"}}}
 
 function! gosh_repl#ui#clear_buffer()"{{{
-  if &filetype == 'gosh-repl'
+  let gosh_repl_bufnr = s:find_buffer('filetype', 'gosh-repl')
+  if gosh_repl_bufnr == 0
+    echohl WarningMsg | echomsg 'use only in the GoshREPL buffer' | echohl None
+  else
+    let cur_nr = bufnr('%')
+    if cur_nr != gosh_repl_bufnr
+      call s:mark_back_to_window()
+      call s:move_to_window('filetype', 'gosh-repl')
+    endif
+
     % delete _
 
     let bufnr = bufnr('%')
@@ -109,8 +118,10 @@ function! gosh_repl#ui#clear_buffer()"{{{
 
       call gosh_repl#check_output(context, 50)
     endif
-  else
-    echohl WarningMsg | echomsg 'use only in the GoshREPL buffer' | echohl None
+
+    if cur_nr != gosh_repl_bufnr
+      call s:back_to_marked_window()
+    endif
   endif
 endfunction"}}}
 
