@@ -148,6 +148,8 @@ function! s:insert_output(context, out)"{{{
   endif
 
   call cursor(line, col)
+  "for screen update ...
+  call winline()
 endfunction"}}}
 
 function! gosh_repl#get_prompt(context, line)

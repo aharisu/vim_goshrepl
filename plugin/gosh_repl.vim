@@ -36,5 +36,8 @@ command! -nargs=0 GoshREPL :call gosh_repl#ui#open_new_repl()
 command! -nargs=0 GoshREPLClear :call gosh_repl#ui#clear_buffer()
 command! -nargs=1 GoshREPLSend :call gosh_repl#ui#send_text(<q-args>)
 
+vnoremap <silent> <Plug>(gosh_repl_send_block) :call gosh_repl#ui#send_text_block()<CR>
+
+
 let &cpo = s:save_cpo
 

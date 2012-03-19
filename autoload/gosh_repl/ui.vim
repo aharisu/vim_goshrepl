@@ -138,15 +138,39 @@ function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
   endif
 endfunction"}}}
 
+function! gosh_repl#ui#send_text_block() range"{{{
+  if &filetype ==# 'gosh-repl'
+    let bufnr = bufnr('%')
+    let context = gosh_repl#ui#get_context(bufnr)
+
+    let text = ''
+    for line in range(a:firstline, a:lastline)
+      let text .= ' ' . substitute(gosh_repl#get_line_text(context, line), '^\s*', '', '')
+    endfor
+  else
+    let text = ''
+    for line in range(a:firstline, a:lastline)
+      let text .= ' ' . substitute(getline(line), '^\s*', '', '')
+    endfor
+  endif
+
+  call gosh_repl#ui#send_text(text)
+endfunction"}}}
+
 function! gosh_repl#ui#send_text(text)"{{{
   let mode = mode()
+  let filetype = &filetype
 
-  call s:mark_back_to_window('send_text')
+  if filetype !=# 'gosh-repl'
+    call s:mark_back_to_window('send_text')
+    call gosh_repl#ui#open_new_repl()
+  endif
 
-  call gosh_repl#ui#open_new_repl()
   call gosh_repl#ui#execute(a:text, bufnr('%'), 0)
 
-  call s:back_to_marked_window('send_text')
+  if filetype !=# 'gosh-repl'
+    call s:back_to_marked_window('send_text')
+  endif
 
   if mode ==# 'n'
     stopinsert

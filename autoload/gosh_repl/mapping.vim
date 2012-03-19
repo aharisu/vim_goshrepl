@@ -46,7 +46,7 @@ function! gosh_repl#mapping#initialize()
   inoremap <buffer><silent> <C-p> <ESC>:<C-u>call <SID>line_replace_input_history(1)<CR>:startinsert!<CR>
   inoremap <buffer><silent> <C-n> <ESC>:<C-u>call <SID>line_replace_input_history(0)<CR>:startinsert!<CR>
 
-  vnoremap <buffer><silent> <CR> :call <SID>execute_block()<CR>
+  vmap <buffer> <CR> <Plug>(gosh_repl_send_block)
 endfunction
 
 function! s:execute_line(is_insert)"{{{
@@ -55,18 +55,6 @@ function! s:execute_line(is_insert)"{{{
   let text = gosh_repl#get_line_text(context, line('.'))
 
   call gosh_repl#ui#execute(text, bufnr, a:is_insert)
-endfunction"}}}
-
-function! s:execute_block() range"{{{
-  let bufnr = bufnr('%')
-  let context = gosh_repl#ui#get_context(bufnr)
-
-  let text = ''
-  for line in range(a:firstline, a:lastline)
-    let text .= ' ' . substitute(gosh_repl#get_line_text(context, line), '^\s*', '', '')
-  endfor
-
-  call gosh_repl#ui#execute(text, bufnr, 0)
 endfunction"}}}
 
 function! s:change_line()"{{{
