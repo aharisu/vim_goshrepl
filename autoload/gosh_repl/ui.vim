@@ -43,6 +43,11 @@ function! gosh_repl#ui#open_new_repl()"{{{
 
     call s:initialize_buffer()
     call gosh_repl#check_output(context, 50)
+
+    "since a buffer number changed, it is a resetup.
+    unlet s:gosh_context[bufnr]
+    let bufnr = bufnr('%')
+    let s:gosh_context[bufnr] = context
   else
     call cursor(line('$'), col('$'))
   endif
