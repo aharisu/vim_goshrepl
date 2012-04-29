@@ -26,6 +26,7 @@
 
 function! gosh_repl#create_gosh_context(...)"{{{
   let proc = vimproc#popen2('gosh -b'
+        \ . ' -u gauche.interactive'
         \ . ' -e "(begin (read-eval-print-loop #f #f (lambda args (for-each print args)(flush)) (lambda () (display \"gosh> \")(flush)))(exit))"'
         \)
   
