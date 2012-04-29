@@ -1,7 +1,7 @@
 "=============================================================================
 " FILE: mapping.vim
 " AUTHOR:  aharisu <foo.yobina@gmail.com>
-" Last Modified: 18 Mar 2012.
+" Last Modified: 29 Apr 2012.
 " License: MIT license  {{{
 "     Permission is hereby granted, free of charge, to any person obtaining
 "     a copy of this software and associated documentation files (the
@@ -25,26 +25,46 @@
 "=============================================================================
 
 function! gosh_repl#mapping#initialize()
-  nnoremap <buffer><expr> <Plug>(change_line) <SID>change_line()
 
-  nnoremap <buffer><silent> <CR> 
-        \:<C-u>call <SID>execute_line(0)<CR>
-  nmap <buffer> cc <Plug>(change_line)
-  nmap <buffer> dd <Plug>(change_line)<ESC>
-  nmap <buffer><silent> I :<C-u>call <SID>insert_head()<CR>
-  nmap <buffer><silent> A :<C-u>call <SID>append_end()<CR>
-  nmap <buffer><silent> i :<C-u>call <SID>insert_enter()<CR>
-  nmap <buffer><silent> a :<C-u>call <SID>append_enter()<CR>
-  nmap <buffer><silent> <C-p> :<C-u>call <SID>line_replace_input_history(1)<CR>
-  nmap <buffer><silent> <C-n> :<C-u>call <SID>line_replace_input_history(0)<CR>
+  nnoremap <buffer><expr> <Plug>(gosh_change_line) <SID>change_line()
 
-  inoremap <buffer><silent> <CR> 
-        \ <ESC>:<C-u>call <SID>execute_line(1)<CR>
-  inoremap <buffer><expr> <BS> <SID>delete_backword_char()
-  inoremap <buffer><expr> <C-h> <SID>delete_backword_char()
-  inoremap <buffer><expr> <C-u> <SID>delete_backword_line()
-  inoremap <buffer><silent> <C-p> <ESC>:<C-u>call <SID>line_replace_input_history(1)<CR>:startinsert!<CR>
-  inoremap <buffer><silent> <C-n> <ESC>:<C-u>call <SID>line_replace_input_history(0)<CR>:startinsert!<CR>
+  nnoremap <buffer><silent> <Plug>(gosh_execute_line) :<C-u>call <SID>execute_line(0)<CR>
+  nnoremap <buffer><silent> <Plug>(gosh_insert_head) :<C-u>call <SID>insert_head()<CR>
+  nnoremap <buffer><silent> <Plug>(gosh_append_end) :<C-u>call <SID>append_end()<CR>
+  nnoremap <buffer><silent> <Plug>(gosh_insert_enter) :<C-u>call <SID>insert_enter()<CR>
+  nnoremap <buffer><silent> <Plug>(gosh_append_enter) :<C-u>call <SID>append_enter()<CR>
+  nnoremap <buffer><silent> <Plug>(gosh_line_replace_history_prev) :<C-u>call <SID>line_replace_input_history(1)<CR>
+  nnoremap <buffer><silent> <Plug>(gosh_line_replace_history_next) :<C-u>call <SID>line_replace_input_history(0)<CR>
+
+  inoremap <buffer><silent> <Plug>(gosh_execute_line) <ESC>:<C-u>call <SID>execute_line(1)<CR>
+  inoremap <buffer><expr> <Plug>(gosh_delete_backword_char) <SID>delete_backword_char()
+  inoremap <buffer><expr> <Plug>(gosh_delete_backword_char) <SID>delete_backword_char()
+  inoremap <buffer><expr> <Plug>(gosh_delete_backword_line) <SID>delete_backword_line()
+  inoremap <buffer><silent> <Plug>(gosh_line_replace_history_prev) <ESC>:<C-u>call <SID>line_replace_input_history(1)<CR>:startinsert!<CR>
+  inoremap <buffer><silent> <Plug>(gosh_line_replace_history_next) <ESC>:<C-u>call <SID>line_replace_input_history(0)<CR>:startinsert!<CR>
+
+  if exists('g:gosh_no_default_keymappings') && g:gosh_no_default_keymappings
+    return
+  endif
+
+  nmap <buffer> <CR> <Plug>(gosh_execute_line)
+  nmap <buffer> cc <Plug>(gosh_change_line)
+  nmap <buffer> dd <Plug>(gosh_change_line)<ESC>
+  nmap <buffer> I <Plug>(gosh_insert_head)
+  nmap <buffer> A <Plug>(gosh_append_end)
+  nmap <buffer> i <Plug>(gosh_insert_enter)
+  nmap <buffer> a <Plug>(gosh_append_enter)
+
+  nmap <buffer> <C-p> <Plug>(gosh_line_replace_history_prev)
+  nmap <buffer> <C-n> <Plug>(gosh_line_replace_history_next)
+
+  imap <buffer> <CR> <Plug>(gosh_execute_line)
+  imap <buffer> <BS> <Plug>(gosh_delete_backword_char)
+  imap <buffer> <C-h> <Plug>(gosh_delete_backword_char)
+  imap <buffer> <C-u> <Plug>(gosh_delete_backword_line)
+
+  imap <buffer><silent> <C-p> <Plug>(gosh_line_replace_history_prev)
+  imap <buffer><silent> <C-n> <Plug>(gosh_line_replace_history_next)
 
   vmap <buffer> <CR> <Plug>(gosh_repl_send_block)
 endfunction
