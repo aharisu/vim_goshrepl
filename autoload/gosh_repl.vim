@@ -108,8 +108,6 @@ function! gosh_repl#get_line_text(context, num_line)"{{{
 endfunction"}}}
 
 function! gosh_repl#execute_text(context, text)"{{{
-  call neocomplcache#print_warning('text:' . a:text)
-
   if !a:context.proc.is_valid || !a:context.proc.stdin.is_valid || a:context.proc.stdin.eof
     call s:run_exit_callback(a:context)
     return 
