@@ -180,19 +180,39 @@ function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
 endfunction"}}}
 
 function! gosh_repl#ui#send_text_block() range"{{{
+  let v = visualmode()
+
+  "get text of selected region
+  let tmp = @@
+  silent normal gvy
+  let selected = @@
+  let @@ = tmp
+
   if &filetype ==# 'gosh-repl'
+    let text = ''
     let bufnr = bufnr('%')
     let context = gosh_repl#ui#get_context(bufnr)
 
-    let text = ''
-    for line in range(a:firstline, a:lastline)
-      let text .= ' ' . substitute(gosh_repl#get_line_text(context, line), '^\s*', '', '')
-    endfor
+    if v ==# 'v' || v ==# 'V'
+      let line = a:firstline
+      for line_text in map(split(selected, "\n"), "substitute(v:val, '^[	 ]*', '', '')")
+        let prompt = gosh_repl#get_prompt(context, line)
+
+        "chomp prompt
+        if line_text =~# "^" . prompt
+          let line_text = line_text[len(prompt) : ]
+        endif
+
+        let text .= ' ' . line_text
+
+        let line += 1
+      endfor
+    else "^V rectangle selection
+      let text = join(map(split(selected, "\n"), "substitute(v:val, '^[	 ]*', '', '')") , ' ')
+    endif
+
   else
-    let text = ''
-    for line in range(a:firstline, a:lastline)
-      let text .= ' ' . substitute(getline(line), '^\s*', '', '')
-    endfor
+    let text = join(map(split(selected, "\n"), "substitute(v:val, '^[	 ]*', '', '')") , ' ')
   endif
 
   call gosh_repl#ui#send_text(text)
