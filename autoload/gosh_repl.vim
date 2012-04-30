@@ -167,7 +167,7 @@ function! s:insert_output(context, out)"{{{
   let text_list = split(a:out, "\n")
   if a:out[-1] ==# "\n"
     let prompt = ''
-    call add(text_list, cur_line_text
+    call add(text_list, cur_line_text)
   else
     let prompt = text_list[-1]
 
