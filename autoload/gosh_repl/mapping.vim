@@ -182,11 +182,11 @@ function! s:line_replace_input_history(prev)"{{{
   elseif index > 0
     if index <= lines_len
       let text = context.lines[-index]
-    else
+    elseif g:gosh_enable_ring_history
       let text = ''
       let index = 0
     endif
-  else " index < 0
+  elseif g:gosh_enable_ring_history " index < 0
     let index = lines_len
     let text = context.lines[-index]
   endif
