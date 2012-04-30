@@ -55,6 +55,29 @@ function! gosh_repl#ui#open_new_repl()"{{{
   startinsert!
 endfunction"}}}
 
+function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
+  let cur_bufnr = bufnr('%')
+
+  silent! execute s:default_open_cmd
+  enew
+  let bufnr = bufnr('%')
+
+  let context = gosh_repl#create_gosh_context_with_buf(cur_bufnr, s:funcref('exit_callback'))
+  let context.context__key = bufnr
+  let context._input_history_index = 0
+  let s:gosh_context[bufnr] = context
+
+  call s:initialize_buffer()
+  call gosh_repl#check_output(context, 250)
+
+  "since a buffer number changed, it is a resetup.
+  unlet s:gosh_context[bufnr]
+  let bufnr = bufnr('%')
+  let s:gosh_context[bufnr] = context
+
+  startinsert!
+endfunction"}}}
+
 function! s:exit_callback(context)"{{{
   execute a:context.context__key 'wincmd q'
   if has_key(s:gosh_context, a:context.context__key)

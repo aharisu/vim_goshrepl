@@ -46,6 +46,44 @@ function! gosh_repl#create_gosh_context(...)"{{{
   return context
 endfunction"}}}
 
+function! gosh_repl#create_gosh_context_with_buf(bufnr, ...)"{{{
+  let proc = vimproc#popen2('gosh -b'
+        \ . ' -u gauche.interactive'
+        \)
+
+  let exception = 0
+  
+  "TODO check proc error
+
+  try
+    for line in getbufline(a:bufnr, 1, '$')
+      call proc.stdin.write(line . "\n") 
+    endfor
+
+    call proc.stdin.write("(read-eval-print-loop #f #f (lambda args (for-each print args)(flush)) (lambda () (display \"gosh> \")(flush)))\n")
+  catch
+    echohl Error | echomsg join(proc.stdout.read_lines(), "\n") | echohl None
+
+    let proc = vimproc#popen2('gosh -b'
+          \ . ' -u gauche.interactive'
+          \ . ' -e "(begin (read-eval-print-loop #f #f (lambda args (for-each print args)(flush)) (lambda () (display \"gosh> \")(flush)))(exit))"'
+          \)
+  endtry
+
+  let context = { 'proc' : proc,
+        \ 'lines' : [],
+        \ 'prompt_histroy' : {},
+        \ }
+
+  if a:0 > 0
+    let context.exit_callback = a:1
+  else
+    let context.exit_callback = 0
+  endif
+
+  return context
+endfunction"}}}
+
 function! gosh_repl#destry_gosh_context(context)"{{{
   call a:context.proc.stdin.close()
   call a:context.proc.stdout.close()
