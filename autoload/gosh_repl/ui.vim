@@ -86,7 +86,15 @@ function! s:exit_callback(context)"{{{
 endfunction"}}}
 
 function! s:initialize_buffer()"{{{
-  edit `='[gosh REPL]'`
+  let cap = '[gosh REPL'
+
+  let c = s:count_window('filetype', 'gosh-repl')
+  if c != 0
+    let cap .= '-' . (c + 1)
+  endif
+  let cap .= ']'
+
+  edit `=cap`
   setlocal buftype=nofile noswapfile
   setlocal bufhidden=delete
   setlocal nonumber
@@ -280,6 +288,25 @@ endfunction"}}}
 
 "
 "window operation
+
+function! s:count_window(kind, val)
+  let c = 0
+
+  for i in range(0, winnr('$'))
+    let n = winbufnr(i)
+    if a:kind ==# 'filetype'
+      if getbufvar(n, '&filetype') ==# a:val
+        let c += 1
+      endif
+    elseif a:kind ==# 'let'
+      if getbufvar(n, a:val)
+        let c += 1
+      endif
+    endif
+  endfor
+
+  return c
+endfunction
 
 function! s:move_to_window(kind, val)"{{{
   for i in range(0, winnr('$'))
