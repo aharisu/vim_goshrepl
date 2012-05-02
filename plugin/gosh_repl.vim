@@ -35,6 +35,9 @@ set cpo&vim
 let g:gosh_enable_ring_history = 
       \ get(g:, 'gosh_enable_ring_history', 1)
 
+let g:gosh_enable_auto_use = 
+      \ get(g:, 'gosh_enable_auto_use', 0)
+
 
 command! -nargs=0 GoshREPL :call gosh_repl#ui#open_new_repl()
 command! -nargs=0 GoshREPLWithBuffer :call gosh_repl#ui#open_new_repl_with_buffer()

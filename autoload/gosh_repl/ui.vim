@@ -42,7 +42,7 @@ function! gosh_repl#ui#open_new_repl()"{{{
     let s:gosh_context[bufnr] = context
 
     call s:initialize_buffer()
-    call gosh_repl#check_output(context, 50)
+    call gosh_repl#check_output(context, 1000)
 
     "since a buffer number changed, it is a resetup.
     unlet s:gosh_context[bufnr]
@@ -68,7 +68,7 @@ function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
   let s:gosh_context[bufnr] = context
 
   call s:initialize_buffer()
-  call gosh_repl#check_output(context, 250)
+  call gosh_repl#check_output(context, 1250)
 
   "since a buffer number changed, it is a resetup.
   unlet s:gosh_context[bufnr]
@@ -176,7 +176,7 @@ function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
   let indent = lispindent(line)
   call setline(line, repeat(' ', indent) .  getline(line))
 
-  call gosh_repl#check_output(context,66)
+  call gosh_repl#check_output(context,1500)
 
   let context._input_history_index = 0
 

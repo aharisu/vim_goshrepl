@@ -24,10 +24,22 @@
 " }}}
 "=============================================================================
 
+let s:gosh_repl_directory = substitute(expand('<sfile>:p:h'), '\\', '/', 'g')
+let s:gosh_repl_body_path = s:gosh_repl_directory . '/gosh_repl/repl.scm'
+
+function! s:enable_auto_use_exp()
+  if g:gosh_enable_auto_use
+    return '(define *enable-auto-use* #t)'
+  else
+    return '(define *enable-auto-use* #f)'
+  endif
+endfunction
+
 function! gosh_repl#create_gosh_context(...)"{{{
   let proc = vimproc#popen2('gosh -b'
         \ . ' -u gauche.interactive'
-        \ . ' -e "(begin (read-eval-print-loop #f #f (lambda args (for-each print args)(flush)) (lambda () (display \"gosh> \")(flush)))(exit))"'
+        \ . ' -I' . s:gosh_repl_directory . '/gosh_repl/'
+        \ . ' -e "(begin ' . s:enable_auto_use_exp() . ' (include \"' . s:gosh_repl_body_path . '\") (exit))"'
         \)
   
   "TODO check proc error
@@ -49,10 +61,9 @@ endfunction"}}}
 function! gosh_repl#create_gosh_context_with_buf(bufnr, ...)"{{{
   let proc = vimproc#popen2('gosh -b'
         \ . ' -u gauche.interactive'
+        \ . ' -I' . s:gosh_repl_directory . '/gosh_repl/'
         \)
 
-  let exception = 0
-  
   "TODO check proc error
 
   try
@@ -60,13 +71,14 @@ function! gosh_repl#create_gosh_context_with_buf(bufnr, ...)"{{{
       call proc.stdin.write(line . "\n") 
     endfor
 
-    call proc.stdin.write("(read-eval-print-loop #f #f (lambda args (for-each print args)(flush)) (lambda () (display \"gosh> \")(flush)))\n")
+    call proc.stdin.write("(begin " . s:enable_auto_use_exp() . " (include \"" . s:gosh_repl_body_path . "\"))\n")
   catch
     echohl Error | echomsg join(proc.stdout.read_lines(), "\n") | echohl None
 
     let proc = vimproc#popen2('gosh -b'
           \ . ' -u gauche.interactive'
-          \ . ' -e "(begin (read-eval-print-loop #f #f (lambda args (for-each print args)(flush)) (lambda () (display \"gosh> \")(flush)))(exit))"'
+          \ . ' -I' . s:gosh_repl_directory . '/gosh_repl/'
+          \ . ' -e "(begin ' . s:enable_auto_use_exp() . ' (include \"' . s:gosh_repl_body_path . '\") (exit))"'
           \)
   endtry
 
@@ -147,7 +159,7 @@ function! s:read_output(context, timeout)"{{{
   while !empty(res)
     let out .= res
 
-    let res = port.read(-1, a:timeout)
+    let res = port.read(-1, 15)
   endwhile
 
   return out
