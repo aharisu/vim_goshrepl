@@ -35,7 +35,7 @@ function! s:enable_auto_use_exp()
   endif
 endfunction
 
-function! gosh_repl#create_gosh_context(...)"{{{
+function! gosh_repl#create_gosh_context(Printer, ...)"{{{
   let proc = vimproc#popen2('gosh -b'
         \ . ' -u gauche.interactive'
         \ . ' -I' . s:gosh_repl_directory . '/gosh_repl/'
@@ -45,6 +45,7 @@ function! gosh_repl#create_gosh_context(...)"{{{
   "TODO check proc error
 
   let context = { 'proc' : proc,
+        \ 'printer' : a:Printer,
         \ 'lines' : [],
         \ 'prompt_histroy' : {},
         \ }
@@ -58,7 +59,7 @@ function! gosh_repl#create_gosh_context(...)"{{{
   return context
 endfunction"}}}
 
-function! gosh_repl#create_gosh_context_with_buf(bufnr, ...)"{{{
+function! gosh_repl#create_gosh_context_with_buf(Printer, bufnr, ...)"{{{
   let proc = vimproc#popen2('gosh -b'
         \ . ' -u gauche.interactive'
         \ . ' -I' . s:gosh_repl_directory . '/gosh_repl/'
@@ -93,6 +94,7 @@ function! gosh_repl#create_gosh_context_with_buf(bufnr, ...)"{{{
   endif
 
   let context = { 'proc' : proc,
+        \ 'printer' : a:Printer,
         \ 'lines' : [],
         \ 'prompt_histroy' : {},
         \ }
@@ -158,7 +160,8 @@ function! gosh_repl#check_output(context, ...)"{{{
 
   let out = s:read_output(a:context, timeout)
   if !empty(out)
-    call s:insert_output(a:context, out)
+    let Printer = a:context.printer
+    call Printer(a:context, out)
   endif
 endfunction"}}}
 
@@ -174,42 +177,6 @@ function! s:read_output(context, timeout)"{{{
   endwhile
 
   return out
-endfunction"}}}
-
-function! s:insert_output(context, out)"{{{
-  if empty(a:out)
-    return
-  endif
-
-  let col = col('.')
-  let line = line('.')
-  let cur_line_text = getline(line)
-
-  let text_list = split(a:out, "\n")
-  if a:out[-1] ==# "\n"
-    let prompt = ''
-    call add(text_list, cur_line_text)
-  else
-    let prompt = text_list[-1]
-
-    let col += len(prompt)
-    let text_list[-1] .= cur_line_text
-  endif
-
-  for text in text_list
-    call setline(line, text)
-
-    let line += 1
-  endfor
-  let line -= 1
-
-  if !empty(prompt)
-    let a:context.prompt_histroy[line] = prompt
-  endif
-
-  call cursor(line, col)
-  "for screen update ...
-  call winline()
 endfunction"}}}
 
 function! gosh_repl#get_prompt(context, line)

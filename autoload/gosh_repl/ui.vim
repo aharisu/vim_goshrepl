@@ -37,7 +37,8 @@ function! gosh_repl#ui#open_new_repl()"{{{
     enew
     let bufnr = bufnr('%')
 
-    let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
+    let context = gosh_repl#create_gosh_context(
+          \ s:funcref('insert_output'), s:funcref('exit_callback'))
     call s:initialize_context(bufnr, context)
 
     call s:initialize_buffer()
@@ -61,7 +62,8 @@ function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
   enew
   let bufnr = bufnr('%')
 
-  let context = gosh_repl#create_gosh_context_with_buf(cur_bufnr, s:funcref('exit_callback'))
+  let context = gosh_repl#create_gosh_context_with_buf(
+        \ s:funcref('insert_output'), cur_bufnr, s:funcref('exit_callback'))
   call s:initialize_context(bufnr, context)
 
   call s:initialize_buffer()
@@ -76,7 +78,7 @@ function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
 endfunction"}}}
 
 function! s:initialize_context(bufnr, context)"{{{
-  let a:context.context__key = a:bufnr
+  let a:context.context__bufnr = a:bufnr
   let a:context._input_history_index = 0
   let a:context.context__is_buf_closed = 0
 
@@ -85,11 +87,11 @@ endfunction"}}}
 
 function! s:exit_callback(context)"{{{
   if !a:context.context__is_buf_closed
-    execute a:context.context__key 'wincmd q'
+    execute a:context.context__bufnr 'wincmd q'
   endif
 
-  if has_key(s:gosh_context, a:context.context__key)
-    unlet s:gosh_context[a:context.context__key]
+  if has_key(s:gosh_context, a:context.context__bufnr)
+    unlet s:gosh_context[a:context.context__bufnr]
   endif
 
   if len(s:gosh_context) == 0
@@ -98,6 +100,53 @@ function! s:exit_callback(context)"{{{
     augroup END
   endif
 endfunction"}}}
+
+function! s:insert_output(context, text)
+  if empty(a:text)
+    return
+  endif
+
+  let cur_bufnr = bufnr('%')
+
+  if cur_bufnr != a:context.context__bufnr
+    call s:mark_back_to_window('_output')
+    call s:move_to_buffer(a:context.context__bufnr)
+  endif
+
+  let col = col('.')
+  let line = line('.')
+  let cur_line_text = getline(line)
+
+  let text_list = split(a:text, "\n")
+  if a:text[-1] ==# "\n"
+    let prompt = ''
+    call add(text_list, cur_line_text)
+  else
+    let prompt = text_list[-1]
+
+    let col += len(prompt)
+    let text_list[-1] .= cur_line_text
+  endif
+
+  for text in text_list
+    call setline(line, text)
+
+    let line += 1
+  endfor
+  let line -= 1
+
+  if !empty(prompt)
+    let a:context.prompt_histroy[line] = prompt
+  endif
+
+  call cursor(line, col)
+  "for screen update ...
+  call winline()
+
+  if cur_bufnr != a:context.context__bufnr
+    call s:back_to_marked_window('_output')
+  endif
+endfunction
 
 function! s:initialize_buffer()"{{{
   let cap = '[gosh REPL'
@@ -156,9 +205,9 @@ function! s:cursor_hold(mode)"{{{
 endfunction"}}}
 
 function! s:check_output(timeout)"{{{
-  if has_key(s:gosh_context, bufnr('%'))
-    call gosh_repl#check_output(s:gosh_context[bufnr('%')], a:timeout)
-  endif
+  for context in values(s:gosh_context)
+    call gosh_repl#check_output(context, a:timeout)
+  endfor
 endfunction"}}}
 
 function! s:save_updatetime()"{{{
@@ -193,7 +242,7 @@ function! gosh_repl#ui#clear_buffer()"{{{
       call gosh_repl#destry_gosh_context(s:gosh_context[bufnr])
 
       let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
-      let context.context__key = bufnr
+      let context.context__bufnr = bufnr
       let s:gosh_context[bufnr] = context
 
       call gosh_repl#check_output(context, 150)
@@ -210,7 +259,7 @@ function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
 
   if bufnr('%') != a:bufnr
     call s:mark_back_to_window('_execute')
-    execute a:bufnr 'wincmd w'
+    call s:move_to_buffer(a:bufnr)
   endif
 
   call gosh_repl#execute_text(context, a:text)
@@ -351,6 +400,26 @@ function! s:count_window(kind, val)"{{{
 
   return c
 endfunction"}}}
+
+function! s:move_to_buffer(bufnr)
+  for i in range(0, winnr('$'))
+    let n = winbufnr(i)
+    let found = 0
+
+    if a:bufnr == n
+      let found = 1
+    endif
+
+    if found
+      if i != 0
+        execute i 'wincmd w'
+      endif
+      return n
+    endif
+  endfor
+
+  return 0
+endfunction
 
 function! s:move_to_window(kind, val)"{{{
   for i in range(0, winnr('$'))
