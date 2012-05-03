@@ -1,14 +1,17 @@
+(define %load-sym-to-module%
+  (let1 loaded #f
+    (lambda ()
+      (unless loaded
+        (set! loaded #t)
+        (load "sym-to-module" :ignore-coding #t)))))
 
-(define %find-module% #f)
-(let1 loaded #f
-  (set! %find-module% 
+(define %find-module% 
+  (let1 loaded #f
     (lambda (str-sym) 
       (if *enable-auto-use*
         (begin
-          (unless loaded
-            (set! loaded #t)
-            (load "sym-to-module" :ignore-coding #t))
-          (hash-table-get %s->m% (string->symbol str-sym) #f))
+          (%load-sym-to-module%)
+          (hash-table-get %s->m% str-sym #f))
         #f))))
 
 (define (%repl-eval% e env)
@@ -25,6 +28,58 @@
                   err)))] ;throw error
            [else err]) ;throw error
     (eval e env)))
+
+(define which-module
+  (let1 loaded #f
+    (lambda (item :key (match 'submatch))
+      (let ([matcher (cond 
+                       [(or (symbol? item) (string? item))
+                        (let ([substr (x->string item)]
+                              [comp (if (eq? match 'strict) string=? string-scan)])
+                          (lambda (name) (comp name substr)))]
+                       [(is-a? item <regexp>) 
+                        (let1 comp (if (eq? match 'strict)
+                                     (lambda (regexp str)
+                                       (let1 m (rxmatch regexp str)
+                                         (if m (string=? (m 0) str) #f)))
+                                     rxmatch)
+                          (lambda (name) (comp item name)))]
+                       [else (error "Bad object for item: " item)])]
+            [result '()])
+
+        (define (found module symbol)
+          (set! result
+            (cons (format #f "~30a (~a)~%" symbol module)
+                  result)))
+
+        ;;load defualt module symbols
+        (unless loaded
+          (set! loaded #t)
+          (load "def-sym-to-module"))
+        ;;search from defualt module
+        (for-each
+          (lambda (mod.sym-list)
+            (for-each
+              (lambda (str-sym)
+                (when (matcher str-sym)
+                  (found (car mod.sym-list) str-sym)))
+              (cdr mod.sym-list)))
+          %d.m->s%)
+
+        ;;load library module
+        (%load-sym-to-module%)
+        ;;search from library module
+        (for-each
+          (lambda (str-sym)
+            (when (matcher str-sym)
+              (found (hash-table-get %s->m% str-sym) str-sym)))
+          (hash-table-keys %s->m%))
+
+        ;;output result
+        (for-each display (sort result))
+
+        ;;return value
+        (values)))))
 
 (read-eval-print-loop 
   #f 

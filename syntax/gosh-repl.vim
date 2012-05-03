@@ -4081,6 +4081,8 @@ syn keyword gosh_replExtFunc temporary-directory
 syn keyword gosh_replExtFunc verbose-run
 
 
+"original function
+syn keyword gosh_replExtFunc which-module
 
 " meddlesome
 set ts=8 sts=2 sw=2 et nocindent lisp

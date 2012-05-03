@@ -1,10 +1,13 @@
-(define default-modules (all-modules))
+(define default-modules (filter 
+                          (lambda (mod) (not (or (eq? 'user (module-name mod)) (eq? 'gauche.internal (module-name mod)))))
+                          (all-modules)))
 
 (use srfi-1)
 (use srfi-13)
 (use file.util)
 
 (define-constant gen-file-name "sym-to-module")
+(define-constant gen-deffile-name "def-sym-to-module")
 
 (define (valid-exports exports)
   (filter
@@ -15,7 +18,7 @@
                (eq? first-ch #\%)
                (#/\s/ str-sym)
                (#/^\*\S*\*$/ str-sym)
-               (#/^G\d{3}$/ str-sym)))))
+               (#/^G\d+$/ str-sym)))))
     exports))
 
 (define (add-remove-supecial-module module-map)
@@ -62,8 +65,41 @@
 (with-output-to-file
   gen-file-name
   (lambda ()
-    (print "(define-constant %s->m% (make-hash-table))")
+    (print "(define-constant %s->m% (make-hash-table 'string=?))")
     (for-each (lambda (key)
-      (print #`"(hash-table-put! %s->m% ',key ',(hash-table-get symbol-table key))"))
+      (print #`"(hash-table-put! %s->m% \",key\" ',(hash-table-get symbol-table key))"))
       (hash-table-keys symbol-table))))
+
+
+(define default-module-symbol-table
+  (let ([m->s (make-hash-table)]
+        [s->m (module-map-to-hash-table
+                (filter-map 
+                  (lambda (m)
+                    (let ([path (library-fold (module-name m) (lambda (m p a) p) #f)]
+                          [exports (hash-table-keys (module-table m))])
+                      (if (or path (null? exports))
+                        #f
+                        (cons (module-name m) (valid-exports exports)))))
+                  default-modules))])
+    (for-each
+      (lambda (sym) (hash-table-push! m->s (hash-table-get s->m sym) sym))
+      (hash-table-keys s->m))
+    m->s))
+
+
+(with-output-to-file
+  gen-deffile-name
+  (lambda ()
+    (print "(define-constant %d.m->s% ")
+    (print "'(")
+    (for-each
+      (lambda (mod) (print "("mod " . "
+                           (map 
+                             (.$ (cut string-append "\"" <> "\"") x->string)
+                             (hash-table-get default-module-symbol-table mod))
+                           ")"))
+      (hash-table-keys default-module-symbol-table))
+    (print "))")))
+
 
