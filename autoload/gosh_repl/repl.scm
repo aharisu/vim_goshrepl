@@ -24,6 +24,7 @@
                 (if mod
                   (begin
                     (eval `(use ,mod) env) ;auto use
+                    (print "repl> auto use of " (x->string mod) " for " (m 1))
                     (%repl-eval% e env)) ;retry eval
                   err)))] ;throw error
            [else err]) ;throw error
