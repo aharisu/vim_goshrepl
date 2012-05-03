@@ -66,21 +66,31 @@ function! gosh_repl#create_gosh_context_with_buf(bufnr, ...)"{{{
 
   "TODO check proc error
 
+  let exception = 0
   try
     for line in getbufline(a:bufnr, 1, '$')
       call proc.stdin.write(line . "\n") 
     endfor
 
+    sleep 100ms
     call proc.stdin.write("(begin " . s:enable_auto_use_exp() . " (include \"" . s:gosh_repl_body_path . "\"))\n")
   catch
-    echohl Error | echomsg join(proc.stdout.read_lines(), "\n") | echohl None
+    let exception = 1
+  endtry
 
+  sleep 100ms
+  if !proc.is_valid || !proc.stdin.is_valid || proc.stdin.eof || !proc.stdout.is_valid || proc.stdout.eof
+    let exception = 1
+  endif
+
+  if exception
+    echohl Error | echomsg join(proc.stdout.read_lines(), "\n") | echohl None
     let proc = vimproc#popen2('gosh -b'
           \ . ' -u gauche.interactive'
           \ . ' -I' . s:gosh_repl_directory . '/gosh_repl/'
           \ . ' -e "(begin ' . s:enable_auto_use_exp() . ' (include \"' . s:gosh_repl_body_path . '\") (exit))"'
           \)
-  endtry
+  endif
 
   let context = { 'proc' : proc,
         \ 'lines' : [],
