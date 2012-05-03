@@ -38,6 +38,9 @@ let g:gosh_enable_ring_history =
 let g:gosh_enable_auto_use = 
       \ get(g:, 'gosh_enable_auto_use', 0)
 
+let g:gosh_updatetime = 
+      \ get(g:, 'gosh_updatetime', 1000)
+
 
 command! -nargs=0 GoshREPL :call gosh_repl#ui#open_new_repl()
 command! -nargs=0 GoshREPLWithBuffer :call gosh_repl#ui#open_new_repl_with_buffer()

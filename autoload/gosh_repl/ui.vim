@@ -27,6 +27,7 @@
 let s:gosh_context = {}
 
 let s:default_open_cmd = '15:split'
+let s:updatetime_save = &updatetime
 
 function! gosh_repl#ui#open_new_repl()"{{{
   let bufnr = s:move_to_window('filetype', 'gosh-repl')
@@ -37,12 +38,10 @@ function! gosh_repl#ui#open_new_repl()"{{{
     let bufnr = bufnr('%')
 
     let context = gosh_repl#create_gosh_context(s:funcref('exit_callback'))
-    let context.context__key = bufnr
-    let context._input_history_index = 0
-    let s:gosh_context[bufnr] = context
+    call s:initialize_context(bufnr, context)
 
     call s:initialize_buffer()
-    call gosh_repl#check_output(context, 1000)
+    call gosh_repl#check_output(context, 250)
 
     "since a buffer number changed, it is a resetup.
     unlet s:gosh_context[bufnr]
@@ -63,12 +62,10 @@ function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
   let bufnr = bufnr('%')
 
   let context = gosh_repl#create_gosh_context_with_buf(cur_bufnr, s:funcref('exit_callback'))
-  let context.context__key = bufnr
-  let context._input_history_index = 0
-  let s:gosh_context[bufnr] = context
+  call s:initialize_context(bufnr, context)
 
   call s:initialize_buffer()
-  call gosh_repl#check_output(context, 1250)
+  call gosh_repl#check_output(context, 250)
 
   "since a buffer number changed, it is a resetup.
   unlet s:gosh_context[bufnr]
@@ -78,10 +75,27 @@ function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
   startinsert!
 endfunction"}}}
 
+function! s:initialize_context(bufnr, context)"{{{
+  let a:context.context__key = a:bufnr
+  let a:context._input_history_index = 0
+  let a:context.context__is_buf_closed = 0
+
+  let s:gosh_context[a:bufnr] = a:context
+endfunction"}}}
+
 function! s:exit_callback(context)"{{{
-  execute a:context.context__key 'wincmd q'
+  if !a:context.context__is_buf_closed
+    execute a:context.context__key 'wincmd q'
+  endif
+
   if has_key(s:gosh_context, a:context.context__key)
     unlet s:gosh_context[a:context.context__key]
+  endif
+
+  if len(s:gosh_context) == 0
+    augroup goshrepl-plugin
+      autocmd! *
+    augroup END
   endif
 endfunction"}}}
 
@@ -102,11 +116,17 @@ function! s:initialize_buffer()"{{{
   setlocal filetype=gosh-repl
   setlocal syntax=gosh-repl
 
-  autocmd BufUnload <buffer> call s:unload_buffer()
-  autocmd CursorHold <buffer> call s:check_output(500)
-  autocmd CursorHoldI <buffer> call s:check_output(500)
-  autocmd CursorMoved <buffer> call s:check_output(0)
-  autocmd CursorMovedI <buffer> call s:check_output(0)
+  augroup goshrepl-plugin
+    autocmd BufUnload <buffer> call s:unload_buffer()
+    autocmd WinEnter,BufWinEnter <buffer> call s:save_updatetime()
+    autocmd WinEnter,BufWinLeave <buffer> call s:restore_updatetime()
+    autocmd CursorHold * call s:cursor_hold('n')
+    autocmd CursorHoldI * call s:cursor_hold('i')
+    autocmd CursorMoved * call s:check_output(0)
+    autocmd CursorMovedI * call s:check_output(0)
+  augroup END
+
+  call s:save_updatetime()
 
   call gosh_repl#mapping#initialize()
 
@@ -118,16 +138,40 @@ endfunction"}}}
 
 function! s:unload_buffer()"{{{
   if has_key(s:gosh_context, bufnr('%'))
-    call gosh_repl#destry_gosh_context(s:gosh_context[bufnr('%')])
-    unlet s:gosh_context[bufnr('%')]
-  endif
+    let context = s:gosh_context[bufnr('%')] 
+    let context.context__is_buf_closed = 1
 
-  autocmd! * <buffer>
+    call gosh_repl#destry_gosh_context(context)
+  endif
+endfunction"}}}
+
+function! s:cursor_hold(mode)"{{{
+  call s:check_output(0)
+
+  if a:mode ==# 'n'
+    call feedkeys("g\<ESC>", 'n')
+  elseif a:mode ==# 'i'
+    call feedkeys("a\<BS>", 'n')
+  endif
 endfunction"}}}
 
 function! s:check_output(timeout)"{{{
   if has_key(s:gosh_context, bufnr('%'))
     call gosh_repl#check_output(s:gosh_context[bufnr('%')], a:timeout)
+  endif
+endfunction"}}}
+
+function! s:save_updatetime()"{{{
+  let s:updatetime_save = &updatetime
+
+  if &updatetime > g:gosh_updatetime
+    let &updatetime = g:gosh_updatetime
+  endif
+endfunction"}}}
+
+function! s:restore_updatetime()"{{{
+  if &updatetime < s:updatetime_save
+    let &updatetime = s:updatetime_save
   endif
 endfunction"}}}
 
@@ -152,7 +196,7 @@ function! gosh_repl#ui#clear_buffer()"{{{
       let context.context__key = bufnr
       let s:gosh_context[bufnr] = context
 
-      call gosh_repl#check_output(context, 50)
+      call gosh_repl#check_output(context, 150)
     endif
 
     if cur_nr != gosh_repl_bufnr
@@ -176,7 +220,7 @@ function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
   let indent = lispindent(line)
   call setline(line, repeat(' ', indent) .  getline(line))
 
-  call gosh_repl#check_output(context,1500)
+  call gosh_repl#check_output(context, 100)
 
   let context._input_history_index = 0
 
@@ -289,7 +333,7 @@ endfunction"}}}
 "
 "window operation
 
-function! s:count_window(kind, val)
+function! s:count_window(kind, val)"{{{
   let c = 0
 
   for i in range(0, winnr('$'))
@@ -306,7 +350,7 @@ function! s:count_window(kind, val)
   endfor
 
   return c
-endfunction
+endfunction"}}}
 
 function! s:move_to_window(kind, val)"{{{
   for i in range(0, winnr('$'))

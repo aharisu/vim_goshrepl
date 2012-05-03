@@ -99,6 +99,7 @@ endfunction"}}}
 function! gosh_repl#destry_gosh_context(context)"{{{
   call a:context.proc.stdin.close()
   call a:context.proc.stdout.close()
+  call s:run_exit_callback(a:context)
 endfunction"}}}
 
 function! s:run_exit_callback(context)
