@@ -28,6 +28,7 @@ let s:gosh_context = {}
 
 let s:default_open_cmd = '15:split'
 let s:updatetime_save = &updatetime
+let s:lispwords = ''
 
 function! gosh_repl#ui#open_new_repl()"{{{
   let bufnr = s:move_to_window('filetype', 'gosh-repl')
@@ -99,9 +100,11 @@ function! s:exit_callback(context)"{{{
       autocmd! *
     augroup END
   endif
+
+  call s:buf_leave()
 endfunction"}}}
 
-function! s:insert_output(context, text)
+function! s:insert_output(context, text)"{{{
   if empty(a:text)
     return
   endif
@@ -146,7 +149,7 @@ function! s:insert_output(context, text)
   if cur_bufnr != a:context.context__bufnr
     call s:back_to_marked_window('_output')
   endif
-endfunction
+endfunction"}}}
 
 function! s:initialize_buffer()"{{{
   let cap = '[gosh REPL'
@@ -167,15 +170,16 @@ function! s:initialize_buffer()"{{{
 
   augroup goshrepl-plugin
     autocmd BufUnload <buffer> call s:unload_buffer()
-    autocmd WinEnter,BufWinEnter <buffer> call s:save_updatetime()
-    autocmd WinEnter,BufWinLeave <buffer> call s:restore_updatetime()
+    autocmd BufEnter <buffer> call s:buf_enter()
+    autocmd BufLeave <buffer> call s:buf_leave()
     autocmd CursorHold * call s:cursor_hold('n')
     autocmd CursorHoldI * call s:cursor_hold('i')
     autocmd CursorMoved * call s:check_output(0)
     autocmd CursorMovedI * call s:check_output(0)
+
   augroup END
 
-  call s:save_updatetime()
+  call s:buf_enter()
 
   call gosh_repl#mapping#initialize()
 
@@ -209,6 +213,22 @@ function! s:check_output(timeout)"{{{
     call gosh_repl#check_output(context, a:timeout)
   endfor
 endfunction"}}}
+
+function! s:buf_enter()
+  call s:save_updatetime()
+
+  let s:lispwords = &lispwords
+  let &lispwords = 'lambda,and,or,if,cond,case,define,let,let*,letrec,begin,do,delay,set!,else,=>,quote,quasiquote,unquote,unquote-splicing,define-syntax,let-syntax,letrec-syntax,syntax-rules,%macroexpand,%macroexpand-1,and-let*,current-module,define-class,define-constant,define-generic,define-in-module,define-inline,define-macro,define-method,define-module,eval-when,export,export-all,extend,import,include,lazy,receive,require,select-module,unless,when,with-module,$,$*,$<<,$do,$do*,$lazy,$many-chars,$or,$satisfy,%do-ec,%ec-guarded-do-ec,%first-ec,%guard-rec,%replace-keywords,--,^,^*,^-generator,^.,^_,^a,^b,^c,^d,^e,^f,^g,^h,^i,^j,^k,^l,^m,^n,^o,^p,^q,^r,^s,^t,^u,^w,^v,^x,^y,^z,add-load-path,any?-ec,append-ec,apropos,assert,autoload,begin0,case-lambda,check-arg,cond-expand,cond-list,condition,cut,cute,debug-print,dec!,declare,define-^x,define-cgen-literal,define-cise-expr,define-cise-macro,define-cise-stmt,define-cise-toplevel,define-compiler-macro,define-condition-type,define-record-type,define-values,do-ec,do-ec:do,dolist,dotimes,ec-guarded-do-ec,ec-simplify,every?-ec,export-if-defined,first-ec,fluid-let,fold-ec,fold3-ec,get-keyword*,get-optional,guard,http-cond-receiver,if-let1,inc!,inline-stub,last-ec,let*-values,let-args,let-keywords,let-keywords*,let-optionals*,let-string-start+end,let-values,let/cc,let1,list-ec,make-option-parser,match,match-define,match-lambda,match-lambda*,match-let,match-let*,match-let1,match-letrec,max-ec,min-ec,parameterize,parse-options,pop!,product-ec,program,push!,rec,require-extension,reset,rlet1,rxmatch-case,rxmatch-cond,rxmatch-if,rxmatch-let,set!-values,shift,srfi-42-,srfi-42-char-range,srfi-42-dispatched,srfi-42-do,srfi-42-generator-proc,srfi-42-integers,srfi-42-let,srfi-42-list,srfi-42-parallel,srfi-42-parallel-1,srfi-42-port,srfi-42-range,srfi-42-real-range,srfi-42-string42-until-1,srfi-42-untilfi-42-vectorfi-42-while-1srfi-42-whilefi-42-while-2ax:make-parserssax:make-elem-parser,stream-cons,ssax:make-pi-parsertream-delay,string-append-ec,string-ec,sum-ec,sxml:find-name-separator,syntax-errorx-errorfime,test*,until,unwind-protect,update!,use,use-version,values-ref,vector-ec,vector-of-length-ec,while,with-builder,with-iteratorwith-signal-handlers,with-time-counter,xmac,xmac1'
+endfunction 
+
+function! s:buf_leave() 
+  call s:restore_updatetime()
+
+  if !empty(s:lispwords)
+    let &lispwords = s:lispwords
+    let s:lispwords = ''
+  endif
+endfunction
 
 function! s:save_updatetime()"{{{
   let s:updatetime_save = &updatetime

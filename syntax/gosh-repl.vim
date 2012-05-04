@@ -62,11 +62,6 @@ else
   setlocal iskeyword=33,35-38,42,43,45-58,60-90,94,95,97-122,126,_
 endif
 
-set lispwords=
-set lispwords+=lambda,and,or,if,cond,case,define,let,let*,letrec
-set lispwords+=begin,do,delay,set!,else,=>
-set lispwords+=quote,quasiquote,unquote,unquote-splicing
-set lispwords+=define-syntax,let-syntax,letrec-syntax,syntax-rules
 syn keyword gosh_replSyntax lambda and or if cond case define let let* letrec
 syn keyword gosh_replSyntax begin do delay set! else =>
 syn keyword gosh_replSyntax quote quasiquote unquote unquote-splicing
@@ -402,415 +397,211 @@ syn keyword gosh_replExtFunc www.cgi.test
 
 " syntax
 syn keyword gosh_replExtSyntax %macroexpand
-set lispwords+=%macroexpand
 syn keyword gosh_replExtSyntax %macroexpand-1
-set lispwords+=%macroexpand-1
 syn keyword gosh_replExtSyntax and-let*
-set lispwords+=and-let*
 syn keyword gosh_replExtSyntax current-module
-set lispwords+=current-module
 syn keyword gosh_replExtSyntax define-class
-set lispwords+=define-class
 syn keyword gosh_replExtSyntax define-constant
-set lispwords+=define-constant
 syn keyword gosh_replExtSyntax define-generic
-set lispwords+=define-generic
 syn keyword gosh_replExtSyntax define-in-module
-set lispwords+=define-in-module
 syn keyword gosh_replExtSyntax define-inline
-set lispwords+=define-inline
 syn keyword gosh_replExtSyntax define-macro
-set lispwords+=define-macro
 syn keyword gosh_replExtSyntax define-method
-set lispwords+=define-method
 syn keyword gosh_replExtSyntax define-module
-set lispwords+=define-module
 syn keyword gosh_replExtSyntax eval-when
-set lispwords+=eval-when
 syn keyword gosh_replExtSyntax export
-set lispwords+=export
 syn keyword gosh_replExtSyntax export-all
-set lispwords+=export-all
 syn keyword gosh_replExtSyntax extend
-set lispwords+=extend
 syn keyword gosh_replExtSyntax import
-set lispwords+=import
 syn keyword gosh_replExtSyntax include
-set lispwords+=include
 syn keyword gosh_replExtSyntax lazy
-set lispwords+=lazy
 syn keyword gosh_replExtSyntax receive
-set lispwords+=receive
 syn keyword gosh_replExtSyntax require
-set lispwords+=require
 syn keyword gosh_replExtSyntax select-module
-set lispwords+=select-module
 syn keyword gosh_replExtSyntax unless
-set lispwords+=unless
 syn keyword gosh_replExtSyntax when
-set lispwords+=when
 syn keyword gosh_replExtSyntax with-module
-set lispwords+=with-module
 
 
 " macro
 syn keyword gosh_replExtSyntax $
-set lispwords+=$
 syn keyword gosh_replExtSyntax $*
-set lispwords+=$*
 syn keyword gosh_replExtSyntax $<<
-set lispwords+=$<<
 syn keyword gosh_replExtSyntax $do
-set lispwords+=$do
 syn keyword gosh_replExtSyntax $do*
-set lispwords+=$do*
 syn keyword gosh_replExtSyntax $lazy
-set lispwords+=$lazy
 syn keyword gosh_replExtSyntax $many-chars
-set lispwords+=$many-chars
 syn keyword gosh_replExtSyntax $or
-set lispwords+=$or
 syn keyword gosh_replExtSyntax $satisfy
-set lispwords+=$satisfy
 syn keyword gosh_replExtSyntax %do-ec
-set lispwords+=%do-ec
 syn keyword gosh_replExtSyntax %ec-guarded-do-ec
-set lispwords+=%ec-guarded-do-ec
 syn keyword gosh_replExtSyntax %first-ec
-set lispwords+=%first-ec
 syn keyword gosh_replExtSyntax %guard-rec
-set lispwords+=%guard-rec
 syn keyword gosh_replExtSyntax %replace-keywords
-set lispwords+=%replace-keywords
 syn keyword gosh_replExtSyntax --
-set lispwords+=--
 syn keyword gosh_replExtSyntax ^
-set lispwords+=^
 syn keyword gosh_replExtSyntax ^*
-set lispwords+=^*
 syn keyword gosh_replExtSyntax ^-generator
-set lispwords+=^-generator
 syn keyword gosh_replExtSyntax ^.
-set lispwords+=^.
 syn keyword gosh_replExtSyntax ^_
-set lispwords+=^_
 syn keyword gosh_replExtSyntax ^a
-set lispwords+=^a
 syn keyword gosh_replExtSyntax ^b
-set lispwords+=^b
 syn keyword gosh_replExtSyntax ^c
-set lispwords+=^c
 syn keyword gosh_replExtSyntax ^d
-set lispwords+=^d
 syn keyword gosh_replExtSyntax ^e
-set lispwords+=^e
 syn keyword gosh_replExtSyntax ^f
-set lispwords+=^f
 syn keyword gosh_replExtSyntax ^g
-set lispwords+=^g
 syn keyword gosh_replExtSyntax ^h
-set lispwords+=^h
 syn keyword gosh_replExtSyntax ^i
-set lispwords+=^i
 syn keyword gosh_replExtSyntax ^j
-set lispwords+=^j
 syn keyword gosh_replExtSyntax ^k
-set lispwords+=^k
 syn keyword gosh_replExtSyntax ^l
-set lispwords+=^l
 syn keyword gosh_replExtSyntax ^m
-set lispwords+=^m
 syn keyword gosh_replExtSyntax ^n
-set lispwords+=^n
 syn keyword gosh_replExtSyntax ^o
-set lispwords+=^o
 syn keyword gosh_replExtSyntax ^p
-set lispwords+=^p
 syn keyword gosh_replExtSyntax ^q
-set lispwords+=^q
 syn keyword gosh_replExtSyntax ^r
-set lispwords+=^r
 syn keyword gosh_replExtSyntax ^s
-set lispwords+=^s
 syn keyword gosh_replExtSyntax ^t
-set lispwords+=^t
 syn keyword gosh_replExtSyntax ^u
-set lispwords+=^u
 syn keyword gosh_replExtSyntax ^v
-set lispwords+=^v
 syn keyword gosh_replExtSyntax ^w
-set lispwords+=^w
 syn keyword gosh_replExtSyntax ^x
-set lispwords+=^x
 syn keyword gosh_replExtSyntax ^y
-set lispwords+=^y
 syn keyword gosh_replExtSyntax ^z
-set lispwords+=^z
 syn keyword gosh_replExtSyntax add-load-path
-set lispwords+=add-load-path
 syn keyword gosh_replExtSyntax any?-ec
-set lispwords+=any?-ec
 syn keyword gosh_replExtSyntax append-ec
-set lispwords+=append-ec
 syn keyword gosh_replExtSyntax apropos
-set lispwords+=apropos
 syn keyword gosh_replExtSyntax assert
-set lispwords+=assert
 syn keyword gosh_replExtSyntax autoload
-set lispwords+=autoload
 syn keyword gosh_replExtSyntax begin0
-set lispwords+=begin0
 syn keyword gosh_replExtSyntax case-lambda
-set lispwords+=case-lambda
 syn keyword gosh_replExtSyntax check-arg
-set lispwords+=check-arg
 syn keyword gosh_replExtSyntax cond-expand
-set lispwords+=cond-expand
 syn keyword gosh_replExtSyntax cond-list
-set lispwords+=cond-list
 syn keyword gosh_replExtSyntax condition
-set lispwords+=condition
 syn keyword gosh_replExtSyntax cut
-set lispwords+=cut
 syn keyword gosh_replExtSyntax cute
-set lispwords+=cute
 syn keyword gosh_replExtSyntax debug-print
-set lispwords+=debug-print
 syn keyword gosh_replExtSyntax dec!
-set lispwords+=dec!
 syn keyword gosh_replExtSyntax declare
-set lispwords+=declare
 syn keyword gosh_replExtSyntax define-^x
-set lispwords+=define-^x
 syn keyword gosh_replExtSyntax define-cgen-literal
-set lispwords+=define-cgen-literal
 syn keyword gosh_replExtSyntax define-cise-expr
-set lispwords+=define-cise-expr
 syn keyword gosh_replExtSyntax define-cise-macro
-set lispwords+=define-cise-macro
 syn keyword gosh_replExtSyntax define-cise-stmt
-set lispwords+=define-cise-stmt
 syn keyword gosh_replExtSyntax define-cise-toplevel
-set lispwords+=define-cise-toplevel
 syn keyword gosh_replExtSyntax define-compiler-macro
-set lispwords+=define-compiler-macro
 syn keyword gosh_replExtSyntax define-condition-type
-set lispwords+=define-condition-type
 syn keyword gosh_replExtSyntax define-record-type
-set lispwords+=define-record-type
 syn keyword gosh_replExtSyntax define-values
-set lispwords+=define-values
 syn keyword gosh_replExtSyntax do-ec
-set lispwords+=do-ec
 syn keyword gosh_replExtSyntax do-ec:do
-set lispwords+=do-ec:do
 syn keyword gosh_replExtSyntax dolist
-set lispwords+=dolist
 syn keyword gosh_replExtSyntax dotimes
-set lispwords+=dotimes
 syn keyword gosh_replExtSyntax ec-guarded-do-ec
-set lispwords+=ec-guarded-do-ec
 syn keyword gosh_replExtSyntax ec-simplify
-set lispwords+=ec-simplify
 syn keyword gosh_replExtSyntax every?-ec
-set lispwords+=every?-ec
 syn keyword gosh_replExtSyntax export-if-defined
-set lispwords+=export-if-defined
 syn keyword gosh_replExtSyntax first-ec
-set lispwords+=first-ec
 syn keyword gosh_replExtSyntax fluid-let
-set lispwords+=fluid-let
 syn keyword gosh_replExtSyntax fold-ec
-set lispwords+=fold-ec
 syn keyword gosh_replExtSyntax fold3-ec
-set lispwords+=fold3-ec
 syn keyword gosh_replExtSyntax get-keyword*
-set lispwords+=get-keyword*
 syn keyword gosh_replExtSyntax get-optional
-set lispwords+=get-optional
 syn keyword gosh_replExtSyntax guard
-set lispwords+=guard
 syn keyword gosh_replExtSyntax http-cond-receiver
-set lispwords+=http-cond-receiver
 syn keyword gosh_replExtSyntax if-let1
-set lispwords+=if-let1
 syn keyword gosh_replExtSyntax inc!
-set lispwords+=inc!
 syn keyword gosh_replExtSyntax inline-stub
-set lispwords+=inline-stub
 syn keyword gosh_replExtSyntax last-ec
-set lispwords+=last-ec
 syn keyword gosh_replExtSyntax let*-values
-set lispwords+=let*-values
 syn keyword gosh_replExtSyntax let-args
-set lispwords+=let-args
 syn keyword gosh_replExtSyntax let-keywords
-set lispwords+=let-keywords
 syn keyword gosh_replExtSyntax let-keywords*
-set lispwords+=let-keywords*
 syn keyword gosh_replExtSyntax let-optionals*
-set lispwords+=let-optionals*
 syn keyword gosh_replExtSyntax let-string-start+end
-set lispwords+=let-string-start+end
 syn keyword gosh_replExtSyntax let-values
-set lispwords+=let-values
 syn keyword gosh_replExtSyntax let/cc
-set lispwords+=let/cc
 syn keyword gosh_replExtSyntax let1
-set lispwords+=let1
 syn keyword gosh_replExtSyntax list-ec
-set lispwords+=list-ec
 syn keyword gosh_replExtSyntax make-option-parser
-set lispwords+=make-option-parser
 syn keyword gosh_replExtSyntax match
-set lispwords+=match
 syn keyword gosh_replExtSyntax match-define
-set lispwords+=match-define
 syn keyword gosh_replExtSyntax match-lambda
-set lispwords+=match-lambda
 syn keyword gosh_replExtSyntax match-lambda*
-set lispwords+=match-lambda*
 syn keyword gosh_replExtSyntax match-let
-set lispwords+=match-let
 syn keyword gosh_replExtSyntax match-let*
-set lispwords+=match-let*
 syn keyword gosh_replExtSyntax match-let1
-set lispwords+=match-let1
 syn keyword gosh_replExtSyntax match-letrec
-set lispwords+=match-letrec
 syn keyword gosh_replExtSyntax max-ec
-set lispwords+=max-ec
 syn keyword gosh_replExtSyntax min-ec
-set lispwords+=min-ec
 syn keyword gosh_replExtSyntax parameterize
-set lispwords+=parameterize
 syn keyword gosh_replExtSyntax parse-options
-set lispwords+=parse-options
 syn keyword gosh_replExtSyntax pop!
-set lispwords+=pop!
 syn keyword gosh_replExtSyntax product-ec
-set lispwords+=product-ec
 syn keyword gosh_replExtSyntax program
-set lispwords+=program
 syn keyword gosh_replExtSyntax push!
-set lispwords+=push!
 syn keyword gosh_replExtSyntax rec
-set lispwords+=rec
 syn keyword gosh_replExtSyntax require-extension
-set lispwords+=require-extension
 syn keyword gosh_replExtSyntax reset
-set lispwords+=reset
 syn keyword gosh_replExtSyntax rlet1
-set lispwords+=rlet1
 syn keyword gosh_replExtSyntax rxmatch-case
-set lispwords+=rxmatch-case
 syn keyword gosh_replExtSyntax rxmatch-cond
-set lispwords+=rxmatch-cond
 syn keyword gosh_replExtSyntax rxmatch-if
-set lispwords+=rxmatch-if
 syn keyword gosh_replExtSyntax rxmatch-let
-set lispwords+=rxmatch-let
 syn keyword gosh_replExtSyntax set!-values
-set lispwords+=set!-values
 syn keyword gosh_replExtSyntax shift
-set lispwords+=shift
 syn keyword gosh_replExtSyntax srfi-42-
-set lispwords+=srfi-42-
 syn keyword gosh_replExtSyntax srfi-42-char-range
-set lispwords+=srfi-42-char-range
 syn keyword gosh_replExtSyntax srfi-42-dispatched
-set lispwords+=srfi-42-dispatched
 syn keyword gosh_replExtSyntax srfi-42-do
-set lispwords+=srfi-42-do
 syn keyword gosh_replExtSyntax srfi-42-generator-proc
-set lispwords+=srfi-42-generator-proc
 syn keyword gosh_replExtSyntax srfi-42-integers
-set lispwords+=srfi-42-integers
 syn keyword gosh_replExtSyntax srfi-42-let
-set lispwords+=srfi-42-let
 syn keyword gosh_replExtSyntax srfi-42-list
-set lispwords+=srfi-42-list
 syn keyword gosh_replExtSyntax srfi-42-parallel
-set lispwords+=srfi-42-parallel
 syn keyword gosh_replExtSyntax srfi-42-parallel-1
-set lispwords+=srfi-42-parallel-1
 syn keyword gosh_replExtSyntax srfi-42-port
-set lispwords+=srfi-42-port
 syn keyword gosh_replExtSyntax srfi-42-range
-set lispwords+=srfi-42-range
 syn keyword gosh_replExtSyntax srfi-42-real-range
-set lispwords+=srfi-42-real-range
 syn keyword gosh_replExtSyntax srfi-42-string
-set lispwords+=srfi-42-string
 syn keyword gosh_replExtSyntax srfi-42-until
-set lispwords+=srfi-42-until
 syn keyword gosh_replExtSyntax srfi-42-until-1
-set lispwords+=srfi-42-until-1
 syn keyword gosh_replExtSyntax srfi-42-vector
-set lispwords+=srfi-42-vector
 syn keyword gosh_replExtSyntax srfi-42-while
-set lispwords+=srfi-42-while
 syn keyword gosh_replExtSyntax srfi-42-while-1
-set lispwords+=srfi-42-while-1
 syn keyword gosh_replExtSyntax srfi-42-while-2
-set lispwords+=srfi-42-while-2
 syn keyword gosh_replExtSyntax ssax:make-elem-parser
-set lispwords+=ssax:make-elem-parser
 syn keyword gosh_replExtSyntax ssax:make-parser
-set lispwords+=ssax:make-parser
 syn keyword gosh_replExtSyntax ssax:make-pi-parser
-set lispwords+=ssax:make-pi-parser
 syn keyword gosh_replExtSyntax stream-cons
-set lispwords+=stream-cons
 syn keyword gosh_replExtSyntax stream-delay
-set lispwords+=stream-delay
 syn keyword gosh_replExtSyntax string-append-ec
-set lispwords+=string-append-ec
 syn keyword gosh_replExtSyntax string-ec
-set lispwords+=string-ec
 syn keyword gosh_replExtSyntax sum-ec
-set lispwords+=sum-ec
 syn keyword gosh_replExtSyntax sxml:find-name-separator
-set lispwords+=sxml:find-name-separator
 syn keyword gosh_replExtSyntax syntax-error
-set lispwords+=syntax-error
 syn keyword gosh_replExtSyntax syntax-errorf
-set lispwords+=syntax-errorf
 syn keyword gosh_replExtSyntax test*
-set lispwords+=test*
 syn keyword gosh_replExtSyntax time
-set lispwords+=time
 syn keyword gosh_replExtSyntax until
-set lispwords+=until
 syn keyword gosh_replExtSyntax unwind-protect
-set lispwords+=unwind-protect
 syn keyword gosh_replExtSyntax update!
-set lispwords+=update!
 syn keyword gosh_replExtSyntax use
-set lispwords+=use
 syn keyword gosh_replExtSyntax use-version
-set lispwords+=use-version
 syn keyword gosh_replExtSyntax values-ref
-set lispwords+=values-ref
 syn keyword gosh_replExtSyntax vector-ec
-set lispwords+=vector-ec
 syn keyword gosh_replExtSyntax vector-of-length-ec
-set lispwords+=vector-of-length-ec
 syn keyword gosh_replExtSyntax while
-set lispwords+=while
 syn keyword gosh_replExtSyntax with-builder
-set lispwords+=with-builder
 syn keyword gosh_replExtSyntax with-iterator
-set lispwords+=with-iterator
 syn keyword gosh_replExtSyntax with-signal-handlers
-set lispwords+=with-signal-handlers
 syn keyword gosh_replExtSyntax with-time-counter
-set lispwords+=with-time-counter
 syn keyword gosh_replExtSyntax xmac
-set lispwords+=xmac
 syn keyword gosh_replExtSyntax xmac1
-set lispwords+=xmac1
-
 
 " procedure
 syn keyword gosh_replExtFunc $->rope
