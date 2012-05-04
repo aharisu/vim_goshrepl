@@ -1,3 +1,7 @@
+(use gauche.sequence)
+
+(define *%history%* '())
+
 (define %load-sym-to-module%
   (let1 loaded #f
     (lambda ()
@@ -28,7 +32,26 @@
                     (%repl-eval% e env)) ;retry eval
                   err)))] ;throw error
            [else err]) ;throw error
-    (eval e env)))
+    (rlet1 ret (eval e env)
+      (if (not (undefined? ret))
+        (push! *%history%* ret)))))
+
+(define (recent idx)
+  (if (< idx (length *%history%*))
+    (last (take (reverse *%history%*) (+ idx 1)))))
+
+(define (latest)
+  (if (pair? *%history%*)
+    (car *%history%*)))
+
+(define (history :optional (len 10))
+  (let* ([history-length (length *%history%*)]
+         [history-start (- history-length (min history-length len))])
+    (for-each-with-index
+      (lambda (idx val)
+        (print (format "[~4d] ~a" (+ history-start idx) val)))
+      (reverse (take *%history%* (min history-length len))))
+    (undefined)))
 
 (define which-module
   (let1 loaded #f
