@@ -3874,6 +3874,9 @@ syn keyword gosh_replExtFunc verbose-run
 
 "original function
 syn keyword gosh_replExtFunc which-module
+syn keyword gosh_replExtFunc recent
+syn keyword gosh_replExtFunc latest
+syn keyword gosh_replExtFunc history
 
 " meddlesome
 set ts=8 sts=2 sw=2 et nocindent lisp

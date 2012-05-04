@@ -1,5 +1,3 @@
-(use gauche.sequence)
-
 (define *%history%* '())
 
 (define %load-sym-to-module%
@@ -32,9 +30,7 @@
                     (%repl-eval% e env)) ;retry eval
                   err)))] ;throw error
            [else err]) ;throw error
-    (rlet1 ret (eval e env)
-      (if (not (undefined? ret))
-        (push! *%history%* ret)))))
+    (eval e env)))
 
 (define (recent idx)
   (if (< idx (length *%history%*))
@@ -47,11 +43,12 @@
 (define (history :optional (len 10))
   (let* ([history-length (length *%history%*)]
          [history-start (- history-length (min history-length len))])
-    (for-each-with-index
-      (lambda (idx val)
-        (print (format "[~4d] ~a" (+ history-start idx) val)))
-      (reverse (take *%history%* (min history-length len))))
-    (undefined)))
+    (let loop ([history (reverse (take *%history%* (min history-length len)))]
+               [idx 0])
+      (print (format "[~4d] ~a" (+ history-start idx) (car history)))
+      (unless (null? (cdr history))
+        (loop (cdr history) (+ idx 1))))
+    (values)))
 
 (define which-module
   (let1 loaded #f
@@ -108,5 +105,13 @@
 (read-eval-print-loop 
   #f 
   %repl-eval%
-  (lambda args (for-each (lambda (e) (write e)(newline)) args)(flush))
+  (lambda args 
+    (for-each 
+      (lambda (e)
+        (unless (undefined? e)
+          (push! *%history%* e))
+        (write e)(newline))
+      args)
+    (flush))
   (lambda () (display "gosh> ")(flush)))
+
