@@ -41,9 +41,24 @@ let g:gosh_enable_auto_use =
 let g:gosh_updatetime = 
       \ get(g:, 'gosh_updatetime', 1000)
 
+let g:gosh_buffer_width = 
+      \ get(g:, 'gosh_buffer_width', 30)
+
+let g:gosh_buffer_height = 
+      \ get(g:, 'gosh_buffer_height', 15)
+
+let g:gosh_buffer_direction = 
+      \ get(g:, 'gosh_buffer_direction', 'h')
+
 
 command! -nargs=0 GoshREPL :call gosh_repl#ui#open_new_repl()
+command! -nargs=0 GoshREPLH :call gosh_repl#ui#open_new_repl('h')
+command! -nargs=0 GoshREPLV :call gosh_repl#ui#open_new_repl('v')
+
 command! -nargs=0 GoshREPLWithBuffer :call gosh_repl#ui#open_new_repl_with_buffer()
+command! -nargs=0 GoshREPLWithBufferH :call gosh_repl#ui#open_new_repl_with_buffer('h')
+command! -nargs=0 GoshREPLWithBufferV :call gosh_repl#ui#open_new_repl_with_buffer('v')
+
 command! -nargs=0 GoshREPLClear :call gosh_repl#ui#clear_buffer()
 command! -nargs=1 GoshREPLSend :call gosh_repl#ui#send_text(<q-args>)
 command! -nargs=0 GoshREPLLines :call gosh_repl#ui#show_all_line()

@@ -26,15 +26,15 @@
 
 let s:gosh_context = {}
 
-let s:default_open_cmd = '15:split'
 let s:updatetime_save = &updatetime
 let b:lispwords = ''
 
-function! gosh_repl#ui#open_new_repl()"{{{
+function! gosh_repl#ui#open_new_repl(...)"{{{
   let bufnr = s:move_to_window('filetype', 'gosh-repl')
 
   if bufnr == 0
-    silent! execute s:default_open_cmd
+    silent! execute s:get_buffer_open_cmd(
+          \ 0 < a:0 ? a:1 : g:gosh_buffer_direction)
     enew
     let bufnr = bufnr('%')
 
@@ -59,7 +59,8 @@ endfunction"}}}
 function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
   let cur_bufnr = bufnr('%')
 
-  silent! execute s:default_open_cmd
+  silent! execute s:get_buffer_open_cmd(
+        \ 0 < a:0 ? a:1 : g:gosh_buffer_direction)
   enew
   let bufnr = bufnr('%')
 
@@ -77,6 +78,14 @@ function! gosh_repl#ui#open_new_repl_with_buffer()"{{{
 
   startinsert!
 endfunction"}}}
+
+function! s:get_buffer_open_cmd(direc)
+  if a:direc =~# '^v'
+    return g:gosh_buffer_width . ':vs'
+  else
+    return g:gosh_buffer_height . ':sp'
+  endif
+endfunction
 
 function! s:initialize_context(bufnr, context)"{{{
   let a:context.context__bufnr = a:bufnr
