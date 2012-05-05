@@ -298,7 +298,7 @@ function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
   let indent = lispindent(line)
   call setline(line, repeat(' ', indent) .  getline(line))
 
-  call gosh_repl#check_output(context, 100)
+  let is_output = gosh_repl#check_output(context, 100)
 
   let context._input_history_index = 0
 
@@ -307,6 +307,8 @@ function! gosh_repl#ui#execute(text, bufnr, is_insert)"{{{
   elseif a:is_insert
     startinsert!
   endif
+
+  return is_output
 endfunction"}}}
 
 function! gosh_repl#ui#send_text_block() range"{{{
@@ -357,7 +359,11 @@ function! gosh_repl#ui#send_text(text)"{{{
     call gosh_repl#ui#open_new_repl()
   endif
 
-  call gosh_repl#ui#execute(a:text, bufnr('%'), 0)
+  let bufnr = bufnr('%')
+  if !gosh_repl#ui#execute(a:text, bufnr, 0)
+    let context = gosh_repl#ui#get_context(bufnr)
+    call gosh_repl#check_output(context, 1000)
+  endif
 
   if filetype !=# 'gosh-repl'
     call s:back_to_marked_window('send_text')

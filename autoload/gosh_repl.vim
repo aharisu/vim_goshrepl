@@ -153,7 +153,7 @@ endfunction"}}}
 function! gosh_repl#check_output(context, ...)"{{{
   if !a:context.proc.is_valid || !a:context.proc.stdout.is_valid || a:context.proc.stdout.eof
     call s:run_exit_callback(a:context)
-    return 
+    return 0
   endif
 
   let timeout = a:0 > 0 ? a:1 : 0
@@ -162,6 +162,9 @@ function! gosh_repl#check_output(context, ...)"{{{
   if !empty(out)
     let Printer = a:context.printer
     call Printer(a:context, out)
+    return 1
+  else
+    return 0
   endif
 endfunction"}}}
 
