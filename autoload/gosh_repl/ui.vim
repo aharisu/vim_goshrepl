@@ -49,6 +49,7 @@ function! gosh_repl#ui#open_new_repl(...)"{{{
     unlet s:gosh_context[bufnr]
     let bufnr = bufnr('%')
     let s:gosh_context[bufnr] = context
+    let context.context__bufnr = bufnr
   else
     call cursor(line('$'), col('$'))
   endif
