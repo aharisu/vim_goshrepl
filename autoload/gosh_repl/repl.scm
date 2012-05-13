@@ -108,9 +108,12 @@
   (lambda args 
     (for-each 
       (lambda (e)
-        (unless (undefined? e)
-          (push! *%history%* e))
-        (write e)(newline))
+        (if (<condition> e)
+          (report-error e)
+          (begin
+            (unless (undefined? e)
+              (push! *%history%* e))
+            (write e)(newline))))
       args)
     (flush))
   (lambda () (display "gosh> ")(flush)))
