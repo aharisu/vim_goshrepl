@@ -1,0 +1,136 @@
+;=============================================================================
+; FILE: gosh_repl.vim
+; AUTHOR:  aharisu <foo.yobina@gmail.com>
+; Last Modified: 30 Oct 2012.
+; License: MIT license
+;     Permission is hereby granted, free of charge, to any person obtaining
+;     a copy of this software and associated documentation files (the
+;     "Software"), to deal in the Software without restriction, including
+;     without limitation the rights to use, copy, modify, merge, publish,
+;     distribute, sublicense, and/or sell copies of the Software, and to
+;     permit persons to whom the Software is furnished to do so, subject to
+;     the following conditions:
+;
+;     The above copyright notice and this permission notice shall be included
+;     in all copies or substantial portions of the Software.
+;
+;     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+;     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+;     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+;     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+;     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+;     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+;=============================================================================
+
+(defvar gosh-repl-directory (substitute (expand "<sfile>:p:h") "\\" "/" "g"))
+(defvar gosh-repl-body-path (string-append gosh-repl-directory "/gosh_repl/repl.scm"))
+
+(defun enable-auto-use-exp ()
+  (if g:gosh-enable-auto-use
+    "(define *enable-auto-use* #t)"
+    "(define *enable-auto-use* #f)"))
+
+(defun gosh_repl#create_gosh_context (Printer . callback)
+  (let* ((proc (vimproc#popen2 
+                 (string-append "gosh -b"
+                                " -u gauche.interactive"
+                                " -I" gosh-repl-directory "/gosh_repl/"
+                                " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\"")))
+         (context (dict (proc proc) (printer Printer) (lines '()) (prompt_history (dict))))) 
+    (set! (ref context 'exit_callback)
+      (if (< 0 (length callback)) (ref callback 0) 0))
+    (return context)))
+
+(defun gosh_repl#create_gosh_context_with_buf (Printer bufnr . callback)
+  (let ((proc (vimproc#popen2 (string-append
+                                "gosh -b"
+                                " -u gauche.interactive"
+                                " -I" gosh-repl-directory "/gosh_repl/")))
+        (exception #f))
+    (try 
+      (begin
+        (dolist (line (getbufline bufnr 1 "$"))
+          ((ref proc 'stdin 'write) (string-append line "\n")))
+        (sleep '100ms)
+        ((ref proc 'stdin 'write) (string-append "(begin " (enable-auto-use-exp) " (include \"" gosh-repl-body-path "\"))\n")))
+      [else
+        (set! exception #t)])
+    (sleep '100ms)
+    (if (or (not (ref proc 'is_valid))
+          (not (ref proc 'stdin 'is_valid)) (ref proc 'stdin 'eof)
+          (not (ref proc 'stdout 'is_valid)) (ref proc 'stdout 'eof))
+      (set! exception #t))
+    (when exception
+      (echohl 'Error)
+      (echomsg (join ((ref proc 'stdout 'read_lines)) "\n"))
+      (echohl 'None)
+      (set! proc (vimproc#popen2 (string-append
+                                   "gosh -b" 
+                                   " -u gauche.interactive"
+                                   " -I" gosh-repl-directory "/gosh_repl"
+                                   " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\""))))
+    (return (dict (proc proc)
+              (printer Printer)
+              (lines '())
+              (prompt_history (dict))
+              (exit_callback (if (< 0 (length callback))
+                               (ref callback 0) 0))))))
+
+(defun gosh_repl#destry_gosh_context (context)
+  ((ref context'proc'stdin'close))
+  ((ref context'proc'stdout'close))
+  (run-exit-callback context))
+
+(defun run-exit-callback (context)
+  (when (isnot (ref context 'exit_callback) 0)
+    (let1 exit-callback (ref context 'exit_callback)
+      (exit-callback context))))
+
+(defun gosh_repl#execute_line (context)
+  (gosh_repl#execute_text 
+    context
+    (gosh_repl#get_line_text context (line "."))))
+
+(defun gosh_repl#get_line_text (context num-line)
+  (subseq (getline num-line)
+          (length (gosh_repl#get_prompt context num-line))))
+
+(defun gosh_repl#execute_text (context text)
+  (when (or (not (ref context'proc'is_valid))
+          (not (ref context'proc'stdin'is_valid)) (ref context'proc'stdin'eof))
+    (run-exit-callback context)
+    (return))
+  (add (ref context'lines) text)
+  ((ref context'proc'stdin'write) 
+   (if (!~# text "\n$")
+     (string-append text "\n")
+     text)))
+
+(defun gosh_repl#check_output (context . timeout)
+  (when (or (not (ref context'proc'is_valid))
+          (not (ref context'proc'stdout'is_valid))
+          (ref context'proc'stdout'eof))
+    (run-exit-callback context)
+    (return #f))
+  (let1 out (read-output context (if (< 0 (length timeout)) (ref timeout 0) 0))
+    (if (not (empty out))
+      (let1 printer (ref context 'printer)
+        (printer context out)
+        (return #t))
+      (return #f))))
+
+(defun read-output (context timeout)
+  (let* ((out "")
+         (port (ref context 'proc 'stdout))
+         (res ((ref port 'read) -1 timeout)))
+    (while (not (empty res))
+      (set! out (string-append out res))
+      (set! res ((ref port 'read) -1 15)))
+    (return out)))
+
+(defun gosh_repl#get_prompt (context line)
+  (if (has_key context "prompt_history")
+    (get (ref context 'prompt_history) line "")
+    ""))
+
