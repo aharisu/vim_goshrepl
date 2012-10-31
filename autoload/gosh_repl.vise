@@ -2,7 +2,7 @@
 ; FILE: gosh_repl.vim
 ; AUTHOR:  aharisu <foo.yobina@gmail.com>
 ; Last Modified: 30 Oct 2012.
-; License: MIT license
+; License: MIT license;{{{
 ;     Permission is hereby granted, free of charge, to any person obtaining
 ;     a copy of this software and associated documentation files (the
 ;     "Software"), to deal in the Software without restriction, including
@@ -20,35 +20,35 @@
 ;     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 ;     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 ;     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-;     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+;     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.;}}}
 ;=============================================================================
 
 (defvar gosh-repl-directory (substitute (expand "<sfile>:p:h") "\\" "/" "g"))
 (defvar gosh-repl-body-path (string-append gosh-repl-directory "/gosh_repl/repl.scm"))
 
-(defun enable-auto-use-exp ()
+(defun enable-auto-use-exp ();{{{
   (if g:gosh-enable-auto-use
     "(define *enable-auto-use* #t)"
-    "(define *enable-auto-use* #f)"))
+    "(define *enable-auto-use* #f)"));}}}
 
-(defun create-context (proc printer exit-callback)
+(defun create-context (proc printer exit-callback);{{{
   (dict 
     (proc proc)
     (printer printer)
     (lines '())
     (prompt_history (dict))
-    (exit_callback exit-callback)))
+    (exit_callback exit-callback)));}}}
 
-(defun gosh_repl#create_gosh_context (Printer . callback)
+(defun gosh_repl#create_gosh_context (Printer . callback);{{{
   (create-context (vimproc#popen2 
                     (string-append "gosh -b"
                                    " -u gauche.interactive"
                                    " -I" gosh-repl-directory "/gosh_repl/"
                                    " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\""))
                   Printer
-                  (get callback 0 0)))
+                  (get callback 0 0)));}}}
 
-(defun gosh_repl#create_gosh_context_with_buf (Printer bufnr . callback)
+(defun gosh_repl#create_gosh_context_with_buf (Printer bufnr . callback);{{{
   (let ((proc (vimproc#popen2 (string-append
                                 "gosh -b"
                                 " -u gauche.interactive"
@@ -80,27 +80,27 @@
                             " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\"")))
         proc)
       Printer 
-      (get callback 0 0))))
+      (get callback 0 0))));}}}
 
-(defun gosh_repl#destry_gosh_context (context)
+(defun gosh_repl#destry_gosh_context (context);{{{
   ((ref context'proc'stdin'close))
   ((ref context'proc'stdout'close))
-  (run-exit-callback context))
+  (run-exit-callback context));}}}
 
-(defun run-exit-callback (context)
+(defun run-exit-callback (context);{{{
   (when (isnot (ref context 'exit_callback) 0)
-    ((ref context 'exit_callback) context)))
+    ((ref context 'exit_callback) context)));}}}
 
-(defun gosh_repl#execute_line (context)
+(defun gosh_repl#execute_line (context);{{{
   (gosh_repl#execute_text 
     context
-    (gosh_repl#get_line_text context (line "."))))
+    (gosh_repl#get_line_text context (line "."))));}}}
 
-(defun gosh_repl#get_line_text (context num-line)
+(defun gosh_repl#get_line_text (context num-line);{{{
   (subseq (getline num-line)
-          (length (gosh_repl#get_prompt context num-line))))
+          (length (gosh_repl#get_prompt context num-line))));}}}
 
-(defun gosh_repl#execute_text (context text)
+(defun gosh_repl#execute_text (context text);{{{
   (if (or (not (ref context'proc'is_valid))
         (not (ref context'proc'stdin'is_valid)) 
         (ref context'proc'stdin'eof))
@@ -110,9 +110,9 @@
       ((ref context'proc'stdin'write) 
        (if (!~# text "\n$")
          (string-append text "\n")
-         text)))))
+         text)))));}}}
 
-(defun gosh_repl#check_output (context . timeout)
+(defun gosh_repl#check_output (context . timeout);{{{
   (if (or (not (ref context'proc'is_valid))
         (not (ref context'proc'stdout'is_valid))
         (ref context'proc'stdout'eof))
@@ -124,19 +124,20 @@
         (begin 
           ((ref context 'printer) context out)
           #t)
-        #f))))
+        #f))));}}}
 
-(defun read-output (context timeout)
+(defun read-output (context timeout);{{{
   (let1 port (ref context 'proc 'stdout)
     (let loop ((out "")
                (res ((ref port 'read) -1 timeout)))
       (if (empty res)
         out
         (loop (string-append out res)
-              ((ref port 'read) -1 15))))))
+              ((ref port 'read) -1 15))))));}}}
 
-(defun gosh_repl#get_prompt (context line)
+(defun gosh_repl#get_prompt (context line);{{{
   (if (has_key context "prompt_history")
     (get (ref context 'prompt_history) line "")
-    ""))
+    ""));}}}
 
+; vim: foldmethod=marker commentstring=;%s
