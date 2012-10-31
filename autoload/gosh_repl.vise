@@ -31,16 +31,22 @@
     "(define *enable-auto-use* #t)"
     "(define *enable-auto-use* #f)"))
 
+(defun create-context (proc printer exit-callback)
+  (dict 
+    (proc proc)
+    (printer printer)
+    (lines '())
+    (prompt_history (dict))
+    (exit_callback exit-callback)))
+
 (defun gosh_repl#create_gosh_context (Printer . callback)
-  (let* ((proc (vimproc#popen2 
-                 (string-append "gosh -b"
-                                " -u gauche.interactive"
-                                " -I" gosh-repl-directory "/gosh_repl/"
-                                " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\"")))
-         (context (dict (proc proc) (printer Printer) (lines '()) (prompt_history (dict))))) 
-    (set! (ref context 'exit_callback)
-      (if (< 0 (length callback)) (ref callback 0) 0))
-    (return context)))
+  (create-context (vimproc#popen2 
+                    (string-append "gosh -b"
+                                   " -u gauche.interactive"
+                                   " -I" gosh-repl-directory "/gosh_repl/"
+                                   " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\""))
+                  Printer
+                  (get callback 0 0)))
 
 (defun gosh_repl#create_gosh_context_with_buf (Printer bufnr . callback)
   (let ((proc (vimproc#popen2 (string-append
@@ -50,32 +56,31 @@
         (exception #f))
     (try 
       (begin
-        (dolist (line (getbufline bufnr 1 "$"))
+        (dolist [line (getbufline bufnr 1 "$")]
           ((ref proc 'stdin 'write) (string-append line "\n")))
         (sleep '100ms)
         ((ref proc 'stdin 'write) (string-append "(begin " (enable-auto-use-exp) " (include \"" gosh-repl-body-path "\"))\n")))
       [else
         (set! exception #t)])
     (sleep '100ms)
-    (if (or (not (ref proc 'is_valid))
-          (not (ref proc 'stdin 'is_valid)) (ref proc 'stdin 'eof)
-          (not (ref proc 'stdout 'is_valid)) (ref proc 'stdout 'eof))
+    (when (or (not (ref proc 'is_valid))
+            (not (ref proc 'stdin 'is_valid)) (ref proc 'stdin 'eof)
+            (not (ref proc 'stdout 'is_valid)) (ref proc 'stdout 'eof))
       (set! exception #t))
-    (when exception
-      (echohl 'Error)
-      (echomsg (join ((ref proc 'stdout 'read_lines)) "\n"))
-      (echohl 'None)
-      (set! proc (vimproc#popen2 (string-append
-                                   "gosh -b" 
-                                   " -u gauche.interactive"
-                                   " -I" gosh-repl-directory "/gosh_repl"
-                                   " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\""))))
-    (return (dict (proc proc)
-              (printer Printer)
-              (lines '())
-              (prompt_history (dict))
-              (exit_callback (if (< 0 (length callback))
-                               (ref callback 0) 0))))))
+    (create-context
+      (if exception
+        (begin
+          (echohl 'Error)
+          (echomsg (join ((ref proc 'stdout 'read_lines)) "\n"))
+          (echohl 'None)
+          (vimproc#popen2 (string-append
+                            "gosh -b" 
+                            " -u gauche.interactive"
+                            " -I" gosh-repl-directory "/gosh_repl"
+                            " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\"")))
+        proc)
+      Printer 
+      (get callback 0 0))))
 
 (defun gosh_repl#destry_gosh_context (context)
   ((ref context'proc'stdin'close))
@@ -84,8 +89,7 @@
 
 (defun run-exit-callback (context)
   (when (isnot (ref context 'exit_callback) 0)
-    (let1 exit-callback (ref context 'exit_callback)
-      (exit-callback context))))
+    ((ref context 'exit_callback) context)))
 
 (defun gosh_repl#execute_line (context)
   (gosh_repl#execute_text 
@@ -97,37 +101,39 @@
           (length (gosh_repl#get_prompt context num-line))))
 
 (defun gosh_repl#execute_text (context text)
-  (when (or (not (ref context'proc'is_valid))
-          (not (ref context'proc'stdin'is_valid)) (ref context'proc'stdin'eof))
+  (if (or (not (ref context'proc'is_valid))
+        (not (ref context'proc'stdin'is_valid)) 
+        (ref context'proc'stdin'eof))
     (run-exit-callback context)
-    (return))
-  (add (ref context'lines) text)
-  ((ref context'proc'stdin'write) 
-   (if (!~# text "\n$")
-     (string-append text "\n")
-     text)))
+    (begin
+      (add (ref context'lines) text)
+      ((ref context'proc'stdin'write) 
+       (if (!~# text "\n$")
+         (string-append text "\n")
+         text)))))
 
 (defun gosh_repl#check_output (context . timeout)
-  (when (or (not (ref context'proc'is_valid))
-          (not (ref context'proc'stdout'is_valid))
-          (ref context'proc'stdout'eof))
-    (run-exit-callback context)
-    (return #f))
-  (let1 out (read-output context (if (< 0 (length timeout)) (ref timeout 0) 0))
-    (if (not (empty out))
-      (let1 printer (ref context 'printer)
-        (printer context out)
-        (return #t))
-      (return #f))))
+  (if (or (not (ref context'proc'is_valid))
+        (not (ref context'proc'stdout'is_valid))
+        (ref context'proc'stdout'eof))
+    (begin
+      (run-exit-callback context)
+      #f)
+    (let1 out (read-output context (get timeout 0 0))
+      (if (not (empty out))
+        (begin 
+          ((ref context 'printer) context out)
+          #t)
+        #f))))
 
 (defun read-output (context timeout)
-  (let* ((out "")
-         (port (ref context 'proc 'stdout))
-         (res ((ref port 'read) -1 timeout)))
-    (while (not (empty res))
-      (set! out (string-append out res))
-      (set! res ((ref port 'read) -1 15)))
-    (return out)))
+  (let1 port (ref context 'proc 'stdout)
+    (let loop ((out "")
+               (res ((ref port 'read) -1 timeout)))
+      (if (empty res)
+        out
+        (loop (string-append out res)
+              ((ref port 'read) -1 15))))))
 
 (defun gosh_repl#get_prompt (context line)
   (if (has_key context "prompt_history")

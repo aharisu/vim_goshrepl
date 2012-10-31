@@ -1,4 +1,13 @@
-let s:dict_type_335 = type({})
+" Generated automatically DO NOT EDIT
+
+function! s:display343()dict
+  echohl Error
+  echomsg join((type(self['proc_339']["stdout"]["read_lines"])==s:dict_type_342) ? self['proc_339']["stdout"]["read_lines"].func() : self['proc_339']["stdout"]["read_lines"](),"\n")
+  echohl None
+  return vimproc#popen2("gosh -b" . " -u gauche.interactive" . " -I" . s:gosh_repl_directory . "/gosh_repl" . " -e \"(begin " . s:enable_auto_use_exp() . " (include \\\"" . s:gosh_repl_body_path . "\\\") (exit))\"")
+endfunction
+
+let s:dict_type_342 = type({})
 
 let s:gosh_repl_directory = substitute(expand("<sfile>:p:h"),"\\","/","g")
 
@@ -12,48 +21,58 @@ function! s:enable_auto_use_exp()
   endif
 endfunction
 
+function! s:create_context(proc,printer,exit_callback)
+  return {'proc' : a:proc,'printer' : a:printer,'lines' : [],'prompt_history' : {},'exit_callback' : a:exit_callback}
+endfunction
+
 function! gosh_repl#create_gosh_context(Printer,...)
-  let proc_329 = vimproc#popen2("gosh -b" . " -u gauche.interactive" . " -I" . s:gosh_repl_directory . "/gosh_repl/" . " -e \"(begin " . s:enable_auto_use_exp() . " (include \\\"" . s:gosh_repl_body_path . "\\\") (exit))\"")
-  let context_330 = {'proc' : proc_329,'printer' : a:Printer,'lines' : [],'prompt_history' : {}}
-  let context_330["exit_callback"] = ((0 < len(a:000))?(a:000[0]) : 0)
-  return context_330
+  return s:create_context(vimproc#popen2("gosh -b" . " -u gauche.interactive" . " -I" . s:gosh_repl_directory . "/gosh_repl/" . " -e \"(begin " . s:enable_auto_use_exp() . " (include \\\"" . s:gosh_repl_body_path . "\\\") (exit))\""),a:Printer,get(a:000,0,0))
 endfunction
 
 function! gosh_repl#create_gosh_context_with_buf(Printer,bufnr,...)
-  let proc_331 = vimproc#popen2("gosh -b" . " -u gauche.interactive" . " -I" . s:gosh_repl_directory . "/gosh_repl/")
-  let exception_332 = 0
+  let proc_339 = vimproc#popen2("gosh -b" . " -u gauche.interactive" . " -I" . s:gosh_repl_directory . "/gosh_repl/")
+  let exception_340 = 0
   try
-    for line_333 in getbufline(a:bufnr,1,"$")
-      call proc_331["stdin"]["write"](line_333 . "\n")
+    for line_341 in getbufline(a:bufnr,1,"$")
+      if (type(proc_339["stdin"]["write"])==s:dict_type_342)
+        call proc_339["stdin"]["write"].func(line_341 . "\n")
+      else
+        call proc_339["stdin"]["write"](line_341 . "\n")
+      endif
     endfor
     sleep 100ms
-    call proc_331["stdin"]["write"]("(begin " . s:enable_auto_use_exp() . " (include \"" . s:gosh_repl_body_path . "\"))\n")
+    if (type(proc_339["stdin"]["write"])==s:dict_type_342)
+      call proc_339["stdin"]["write"].func("(begin " . s:enable_auto_use_exp() . " (include \"" . s:gosh_repl_body_path . "\"))\n")
+    else
+      call proc_339["stdin"]["write"]("(begin " . s:enable_auto_use_exp() . " (include \"" . s:gosh_repl_body_path . "\"))\n")
+    endif
   catch
-    let exception_332 = 1
+    let exception_340 = 1
   endtry
   sleep 100ms
-  if !(proc_331["is_valid"]) || !(proc_331["stdin"]["is_valid"]) || (proc_331["stdin"]["eof"]) || !(proc_331["stdout"]["is_valid"]) || (proc_331["stdout"]["eof"])
-    let exception_332 = 1
+  if !(proc_339["is_valid"]) || !(proc_339["stdin"]["is_valid"]) || (proc_339["stdin"]["eof"]) || !(proc_339["stdout"]["is_valid"]) || (proc_339["stdout"]["eof"])
+    let exception_340 = 1
   endif
-  if exception_332
-    echohl Error
-    echomsg join(proc_331["stdout"]["read_lines"](),"\n")
-    echohl None
-    let proc_331 = vimproc#popen2("gosh -b" . " -u gauche.interactive" . " -I" . s:gosh_repl_directory . "/gosh_repl" . " -e \"(begin " . s:enable_auto_use_exp() . " (include \\\"" . s:gosh_repl_body_path . "\\\") (exit))\"")
-  endif
-  return {'proc' : proc_331,'printer' : a:Printer,'lines' : [],'prompt_history' : {},'exit_callback' : ((0 < len(a:000))?(a:000[0]) : 0)}
+  return s:create_context(((exception_340)?{'func':function('s:display343'),'proc_339':proc_339}.func() : proc_339),a:Printer,get(a:000,0,0))
 endfunction
 
 function! gosh_repl#destry_gosh_context(context)
-  call a:context["proc"]["stdin"]["close"]()
-  call a:context["proc"]["stdout"]["close"]()
+  if (type(a:context["proc"]["stdin"]["close"])==s:dict_type_342)
+    call a:context["proc"]["stdin"]["close"].func()
+  else
+    call a:context["proc"]["stdin"]["close"]()
+  endif
+  if (type(a:context["proc"]["stdout"]["close"])==s:dict_type_342)
+    call a:context["proc"]["stdout"]["close"].func()
+  else
+    call a:context["proc"]["stdout"]["close"]()
+  endif
   return s:run_exit_callback(a:context)
 endfunction
 
 function! s:run_exit_callback(context)
   if (a:context["exit_callback"]) isnot 0
-    let Exit_Callback_334 = a:context["exit_callback"]
-    return (type(Exit_Callback_334)==s:dict_type_335) ? Exit_Callback_334.func(a:context) : Exit_Callback_334(a:context)
+    return (type(a:context["exit_callback"])==s:dict_type_342) ? a:context["exit_callback"].func(a:context) : a:context["exit_callback"](a:context)
   endif
 endfunction
 
@@ -67,41 +86,47 @@ endfunction
 
 function! gosh_repl#execute_text(context,text)
   if !(a:context["proc"]["is_valid"]) || !(a:context["proc"]["stdin"]["is_valid"]) || (a:context["proc"]["stdin"]["eof"])
-    call s:run_exit_callback(a:context)
-    return
+    return s:run_exit_callback(a:context)
+  else
+    call add(a:context["lines"],a:text)
+    return (type(a:context["proc"]["stdin"]["write"])==s:dict_type_342) ? a:context["proc"]["stdin"]["write"].func(((a:text !~# "\n$")?a:text . "\n" : a:text)) : a:context["proc"]["stdin"]["write"](((a:text !~# "\n$")?a:text . "\n" : a:text))
   endif
-  call add(a:context["lines"],a:text)
-  return a:context["proc"]["stdin"]["write"](((a:text !~# "\n$")?a:text . "\n" : a:text))
 endfunction
 
 function! gosh_repl#check_output(context,...)
   if !(a:context["proc"]["is_valid"]) || !(a:context["proc"]["stdout"]["is_valid"]) || (a:context["proc"]["stdout"]["eof"])
     call s:run_exit_callback(a:context)
     return 0
-  endif
-  let out_336 = s:read_output(a:context,((0 < len(a:000))?(a:000[0]) : 0))
-  if !empty(out_336)
-    let Printer_337 = a:context["printer"]
-    if (type(Printer_337)==s:dict_type_335)
-      call Printer_337.func(a:context,out_336)
-    else
-      call Printer_337(a:context,out_336)
-    endif
-    return 1
   else
-    return 0
+    let out_344 = s:read_output(a:context,get(a:000,0,0))
+    if !empty(out_344)
+      if (type(a:context["printer"])==s:dict_type_342)
+        call a:context["printer"].func(a:context,out_344)
+      else
+        call a:context["printer"](a:context,out_344)
+      endif
+      return 1
+    else
+      return 0
+    endif
   endif
 endfunction
 
 function! s:read_output(context,timeout)
-  let out_338 = ""
-  let port_339 = a:context["proc"]["stdout"]
-  let res_340 = port_339["read"](-1,a:timeout)
-  while !empty(res_340)
-    let out_338 = out_338 . res_340
-    let res_340 = port_339["read"](-1,15)
+  let port_345 = a:context["proc"]["stdout"]
+  let out_346 = ""
+  let res_347 = (type(port_345["read"])==s:dict_type_342) ? port_345["read"].func(-1,a:timeout) : port_345["read"](-1,a:timeout)
+  let recursion_348 = 1
+  while recursion_348
+    let recursion_348 = 0
+    if empty(res_347)
+      return out_346
+    else
+      let recursion_348 = 1
+      let out_346 = out_346 . res_347
+      let res_347 = (type(port_345["read"])==s:dict_type_342) ? port_345["read"].func(-1,15) : port_345["read"](-1,15)
+    endif
   endwhile
-  return out_338
 endfunction
 
 function! gosh_repl#get_prompt(context,line)
