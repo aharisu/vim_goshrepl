@@ -1,0 +1,360 @@
+;=============================================================================
+; FILE: ui.vim
+; AUTHOR:  aharisu <foo.yobina@gmail.com>
+; Last Modified: 04 Nov 2012.
+; License: MIT license;{{{
+;     Permission is hereby granted, free of charge, to any person obtaining
+;     a copy of this software and associated documentation files (the
+;     "Software"), to deal in the Software without restriction, including
+;     without limitation the rights to use, copy, modify, merge, publish,
+;     distribute, sublicense, and/or sell copies of the Software, and to
+;     permit persons to whom the Software is furnished to do so, subject to
+;     the following conditions:
+;
+;     The above copyright notice and this permission notice shall be included
+;     in all copies or substantial portions of the Software.
+;
+;     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+;     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+;     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+;     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+;     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+;     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.;}}}
+;=============================================================================
+
+(defvar gosh-context (dict))
+(defvar updatetime-save &updatetime)
+(defvar b:lispwords "")
+
+(defun gosh_repl#ui#open_new_repl (:rest cmd);{{{
+  (let1 bufnum (move-to-window "filetype" "gosh-repl")
+    (if bufnum
+      (cursor (line "$") (col "$"))
+      (begin
+        (silent! 'execute (get-buffer-open-cmd (get cmd 0 g:gosh_buffer_direction)))
+        (enew)
+        (let* ([bufnum (bufnr "%")]
+               [ctx (gosh_repl#create_gosh_context insert-output exit-callback)])
+          (initialize-context bufnum ctx)
+          (initialize-buffer)
+          (gosh_repl#check_output ctx 250)
+          (unlet (ref gosh-context bufnum))
+          (let1 bufnum (bufnr "%")
+            (set! (ref gosh-context bufnum) ctx)
+            (set! (ref ctx 'context__bufnr) bufnum)))))
+    (startinsert!)));}}}
+
+(defun gosh_repl#ui#open_new_repl_with_buffer (:rest cmd);{{{
+  (let1 cur-bufnum (bufnr "%")
+    (silent! 'execute (get-buffer-open-cmd (get cmd 0 g:gosh_buffer_direction)))
+    (enew)
+    (let ([bufnum (bufnr "%")]
+          [ctx (gosh_repl#create_gosh_context_with_buf
+                 insert-output cur-bufnum exit-callback)])
+      (initialize-context bufnum ctx)
+      (initialize-buffer)
+      (gosh_repl#check_output ctx 250)
+      ;since a buffer number changed, it is a resetup.
+      (unlet (ref gosh-context bufnum))
+      (let1 bufnum (bufnr "%")
+        (set! (ref gosh-context bufnum) ctx))))
+  (startinsert!));}}}
+
+(defun get-buffer-open-cmd (direc);{{{
+  (if (=~# direc "^v")
+    (string-append g:gosh_buffer_width ":vs")
+    (string-append g:gosh_buffer_height ":sp")));}}}
+
+(defun initialize-context (bufnum ctx);{{{
+  (set! (ref ctx 'context__bufnr) bufnum)
+  (set! (ref ctx '_input_history_index) 0)
+  (set! (ref ctx 'context__is_buf_closed) 0)
+  (set! (ref gosh-context bufnum) ctx));}}}
+
+(defun insert-output (ctx text);{{{
+  (when (empty text)
+    (return))
+  (let1 bufnum (bufnr "%")
+    (when (!= bufnum (ref ctx 'context__bufnr))
+      (mark-back-to-window "_output")
+      (move-to-buffer (ref ctx 'context__bufnr)))
+    (let* ([col (col ".")]
+           [line (line ".")]
+           [cur-line-text (getline line)]
+           [text-list (split text "\n")]
+           [prompt ""])
+      (if (==# (ref text -1) "\n")
+        (add text-list cur-line-text)
+        (begin
+          (set! prompt (ref text-list -1))
+          (+= col (len prompt))
+          (.= (ref text-list -1) cur-line-text)))
+      (dolist [text text-list]
+        (setline line text)
+        (+= line 1))
+      (-= line 1)
+      (unless (empty prompt)
+        (set! (ref ctx 'prompt_history line) prompt))
+      (cursor line col)
+      ;for screen update ...
+      (winline)
+      (when (!= bufnum (ref ctx 'context__bufnr))
+        (back-to-marked-window "_output")))));}}}
+
+(defun exit-callback (ctx);{{{
+  (unless (ref ctx 'context__is_buf_closed)
+    (execute (ref ctx 'context__bufnr) "wincmd q"))
+  (when (has_key gosh-context (ref ctx 'context__bufnr))
+    (unlet (ref gosh-context (ref ctx 'context__bufnr))))
+  (when (== 0 (len gosh-context))
+    (augroup goshrepl-plugin
+      (autocmd! '*)))
+  (buf-leave));}}}
+
+(defun initialize-buffer ();{{{
+  (let* ([cap "[gosh REPL"]
+         [c (count-window "filetype" "gosh-repl")]
+         [cap (string-append
+                (if c (string-append cap "-" (+ c 1)) cap)
+                "]")])
+    (edit (qq= cap))
+    (setlocal 'buftype 'nofile 'noswapfile)
+    (setlocal 'bufhidden 'delete)
+    (setlocal 'nonumber)
+    (setlocal 'filetype 'gosh-repl)
+    (setlocal 'syntax 'gosh-repl)
+    (augroup goshrepl-plugin
+      (autocmd (BufUnload) <buffer> (unload-buffer))
+      (autocmd (BufEnter) <buffer> (buf-enter))
+      (autocmd (BufLeave) <buffer> (buf-leave))
+      (autocmd (CursorHold) <buffer> (cursor-hold "n"))
+      (autocmd (CursorHoldI) <buffer> (cursor-hold "i"))
+      (autocmd (CursorMoved) <buffer> (check-output 0))
+      (autocmd (CursorMovedI) <buffer> (check-output 0)))
+    (buf-enter)
+    (gosh_repl#mapping#initialize)));}}}
+
+(defun gosh_repl#ui#get_context (bufnr);{{{
+  (ref gosh-context bufnr));}}}
+
+(defun unload-buffer ();{{{
+  (when (has_key gosh-context (bufnr "%"))
+    (let1 ctx (ref gosh-context (bufnr "%"))
+      (set! (ref ctx 'context__is_buf_closed) 1)
+      (gosh_repl#destry_gosh_context ctx))));}}}
+
+(defun cursor-hold (mode);{{{
+  (check-output 0)
+  (cond
+    [(==# mode "n") (feedkeys (key-str "g\\<ESC>") "n")]
+    [(==# mode "i") (feedkeys (key-str "a\\<BS>") "n")]));}}}
+
+(defun check-output (timeout);{{{
+  (dolist [ctx (values gosh-context)]
+    (gosh_repl#check_output ctx timeout)));}}}
+
+(defun buf-enter ();{{{
+  (save-updatetime)
+  (set! b:lispwords &lispwords)
+  (set! &lispwords "lambda,and,or,if,cond,case,define,let,let*,letrec,begin,do,delay,set!,else,=>,quote,quasiquote,unquote,unquote-splicing,define-syntax,let-syntax,letrec-syntax,syntax-rules,%macroexpand,%macroexpand-1,and-let*,current-module,define-class,define-constant,define-generic,define-in-module,define-inline,define-macro,define-method,define-module,eval-when,export,export-all,extend,import,include,lazy,receive,require,select-module,unless,when,with-module,$,$*,$<<,$do,$do*,$lazy,$many-chars,$or,$satisfy,%do-ec,%ec-guarded-do-ec,%first-ec,%guard-rec,%replace-keywords,--,^,^*,^-generator,^.,^_,^a,^b,^c,^d,^e,^f,^g,^h,^i,^j,^k,^l,^m,^n,^o,^p,^q,^r,^s,^t,^u,^w,^v,^x,^y,^z,add-load-path,any?-ec,append-ec,apropos,assert,autoload,begin0,case-lambda,check-arg,cond-expand,cond-list,condition,cut,cute,debug-print,dec!,declare,define-^x,define-cgen-literal,define-cise-expr,define-cise-macro,define-cise-stmt,define-cise-toplevel,define-compiler-macro,define-condition-type,define-record-type,define-values,do-ec,do-ec:do,dolist,dotimes,ec-guarded-do-ec,ec-simplify,every?-ec,export-if-defined,first-ec,fluid-let,fold-ec,fold3-ec,get-keyword*,get-optional,guard,http-cond-receiver,if-let1,inc!,inline-stub,last-ec,let*-values,let-args,let-keywords,let-keywords*,let-optionals*,let-string-start+end,let-values,let/cc,let1,list-ec,make-option-parser,match,match-define,match-lambda,match-lambda*,match-let,match-let*,match-let1,match-letrec,max-ec,min-ec,parameterize,parse-options,pop!,product-ec,program,push!,rec,require-extension,reset,rlet1,rxmatch-case,rxmatch-cond,rxmatch-if,rxmatch-let,set!-values,shift,srfi-42-,srfi-42-char-range,srfi-42-dispatched,srfi-42-do,srfi-42-generator-proc,srfi-42-integers,srfi-42-let,srfi-42-list,srfi-42-parallel,srfi-42-parallel-1,srfi-42-port,srfi-42-range,srfi-42-real-range,srfi-42-string42-until-1,srfi-42-untilfi-42-vectorfi-42-while-1srfi-42-whilefi-42-while-2ax:make-parserssax:make-elem-parser,stream-cons,ssax:make-pi-parsertream-delay,string-append-ec,string-ec,sum-ec,sxml:find-name-separator,syntax-errorx-errorfime,test*,until,unwind-protect,update!,use,use-version,values-ref,vector-ec,vector-of-length-ec,while,with-builder,with-iteratorwith-signal-handlers,with-time-counter,xmac,xmac1"));}}}
+
+(defun buf-leave ();{{{
+  (restore-updatetime)
+  (unless (empty b:lispwords)
+    (set! &lispwords b:lispwords)
+    (set! b:lispwords "")));}}}
+
+(defun save-updatetime ();{{{
+  (set! updatetime-save &updatetime)
+  (when (> &updatetime g:gosh_updatetime)
+    (set! &updatetime g:gosh_updatetime)));}}}
+
+(defun restore-updatetime ();{{{
+  (when (< &updatetime updatetime-save)
+    (set! &updatetime updatetime-save)));}}}
+
+(defun gosh_repl#ui#clear_buffer ();{{{
+  (if-let1 repl-bufnum (find-buffer "filetype" "gosh-repl")
+    (let1 cur-bufnum (bufnr "%")
+      (when (!= cur-bufnum repl-bufnum)
+        (mark-back-to-window)
+        (move-to-window "filetype" "gosh-repl"))
+      "% delete _"
+      (let1 bufnum (bufnr "%")
+        (when (has_key gosh-context bufnum)
+          (gosh_repl#destry_gosh_context (ref gosh-context bufnum))
+          (let1 ctx (gosh_repl#create_gosh_context exit-callback)
+            (set! (ref ctx 'context__bufnr) bufnum)
+            (set! (ref gosh-context bufnum) ctx)
+            (gosh_repl#check_output ctx 150))))
+      (when (!= cur-bufnum repl-bufnum)
+        (back-to-marked-window)))
+    (begin
+      (echohl 'WarningMsg)
+      (echomsg "use only in the GoshREPL buffer")
+      (echohl 'None))));}}}
+
+(defun gosh_repl#ui#execute (text bufnum is-insert);{{{
+  (let1 ctx (gosh_repl#ui#get_context bufnum)
+    (when (!= (bufnr "%") bufnum)
+      (mark-back-to-window "_execute")
+      (move-to-buffer bufnum))
+    (gosh_repl#execute_text ctx text)
+    (execute ":$ normal o")
+    (let1 l (line ".")
+      (setline l (string-append
+                   (repeat " " (lispindent l))
+                   (getline l))))
+    (let1 output? (gosh_repl#check_output ctx 100)
+      (set! (ref ctx '_input_history_index) 0)
+      (if (!= (bufnr "%") bufnum)
+        (back-to-marked-window "_execute")
+        (startinsert!))
+      output?)));}}}
+
+(defun line-split (text-block);{{{
+  (map
+    (lambda (line) (substitute line "^[	 ]*" "" ""))
+    (split text-block "\n")));}}}
+
+(defun get-visual-block ();{{{
+  (let1 tmp @@
+    (silent 'normal 'gvy)
+    (begin0 @@
+      (set! @@ tmp))));}}}
+
+(defun gosh_repl#ui#send_text_block () :range;{{{
+  (let ([v (visualmode)]
+        [selected (get-visual-block)]
+        [text ""])
+    (if (and (==# &filetype "gosh-repl") (==# v "v") (==# v "V"))
+      (let* ([bufnum (bufnr "%")]
+             [ctx (gosh_repl#ui#get_context bufnum)]
+             [line a:firstline])
+        (dolist [line-text (line-split selected)]
+          ;chomp prompt
+          (let1 prompt (gosh_repl#get_prompt ctx line)
+            (when (=~# line-text (string-append "^" prompt))
+              (set! line-text (subseq line-text (len prompt)))))
+          (.= text " " line-text)
+          (+= line 1)))
+      (set! text (join (line-split selected) " ")))
+    (gosh_repl#ui#send_text text)));}}}
+
+(defun gosh_repl#ui#send_text (text);{{{
+  (let ([mode (mode)]
+        [filetype &filetype])
+    (when (!=# filetype "gosh-repl")
+      (mark-back-to-window "_send_text")
+      (gosh_repl#ui#open_new_repl))
+    (let1 bufnum (bufnr "%")
+      (unless (gosh_repl#ui#execute text bufnum 0)
+        (gosh_repl#check_output (gosh_repl#ui#get_context bufnum) 1000)))
+    (when (!=# filetype "gosh-repl")
+      (back-to-marked-window "_send_text"))
+    (when (==# mode "n")
+      (stopinsert))));}}}
+
+(defun gosh_repl#ui#show_all_line ();{{{
+  (if-let1 repl-bufnum (find-buffer "filetype" "gosh-repl")
+    (let1 nr (move-to-window "let" "gosh_repl_all_line")
+      (if nr
+        "% delete _"
+        (begin
+          (execute (calc-split-window-direction (bufnr "%")) " split")
+          (enew)
+          ;buffer initialize
+          (edit (qq= (sq-str "[gosh REPL lines]")))
+          (setlocal 'buftype 'nofile 'noswapfile)
+          (setlocal 'bufhidden 'delete)
+          (setlocal 'filetype 'scheme)
+          (setlocal 'syntax 'scheme)
+          ;mark lines buffer
+          (defvar b:gosh_repl_all_line #t)))
+      (let ([ctx (gosh_repl#ui#get_context repl-bufnum)]
+            [line 1])
+        (dolist [text (ref ctx 'lines)]
+          (setline line (string-append (repeat " " (lispindent line))  (strtrim text)))
+          (+= line 1)
+          (execute "normal o")
+          (stopinsert))
+        (execute line "delete _")))
+    (begin
+      (echohl 'WarningMsg)
+      (echomsg "gosh-repl buffer not found.")
+      (echohl 'None))));}}}
+
+(defun calc-split-window-direction (bufnum);{{{
+  (if (< (* (winwidth bufnum) 2) (* (winheight bufnum) 5))
+    ""
+    "vertical"));}}}
+
+;
+;window operation
+
+(defun count-window (kind val);{{{
+  (rlet1 c 0
+    (dolist [i (range 0 (winnr "$"))]
+      (let1 n (winbufnr i)
+        (cond
+          [(==# kind "filetype")
+           (when (==# (getbufvar n "&filetype") val)
+             (+= c 1))]
+          [(==# kind "let")
+           (when (getbufvar n val)
+             (+= c 1))])))));}}}
+
+(defun move-to-buffer (bufnum);{{{
+  (dolist [i (range 0 (winnr "$"))]
+    (let1 n (winbufnr i)
+      (when (== bufnum n)
+        (when (!= i 0)
+          (execute i "wincmd w"))
+        (return n))))
+  #f);}}}
+
+(defun move-to-window (kind val);{{{
+  (dolist [i (range 0 (winnr "$"))]
+    (let1 n (winbufnr i)
+      (when (cond
+              [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
+              [(==# kind "let") (getbufvar n val)]
+              [else 0])
+        (when (!= i 0)
+          (execute i "wincmd w"))
+        (return n))))
+  #f);}}}
+
+(defun find-buffer (kind val);{{{
+  (dolist [i (range 0 (winnr "$"))]
+    (let1 n (winbufnr i)
+      (when (cond
+              [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
+              [(==# kind "let") (getbufvar n val)]
+              [else 0])
+        (return n))))
+  #f);}}}
+
+(defun mark-back-to-window (:rest mark);{{{
+  (execute (string-append "let w:" (get mark 0 "_ref_back") " = 1")));}}}
+
+(defun unmark-back-to-window ();{{{
+  (unlet! w:_ref_back));}}}
+
+(defun back-to-marked-window (:rest mark);{{{
+  (let1 mark (get mark 0 "_ref_back")
+    (dolist [t (range 1 (tabpagenr "$"))]
+      (dolist [w (range 1 (winnr "$"))]
+        (when (gettabwinvar t w mark)
+          (execute "tabnext" t)
+          (execute w "wincmd w")
+          (execute (string-append "unlet! w:" mark)))))));}}}
+
+;
+;util
+
+(defun strtrim (text);{{{
+  (substitute (copy text) (sq-str "^\\s*") "" ""));}}}
+
+; vim: foldmethod=marker commentstring=;%s
