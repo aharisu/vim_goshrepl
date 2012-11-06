@@ -23,54 +23,52 @@
 ;     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.;}}}
 ;=============================================================================
 
+(include "../common-macro.vise")
+
 (defvar gosh-context (dict))
 (defvar updatetime-save &updatetime)
 (defvar b:lispwords "")
 
+(defun create-gosh-repl-buffer (open-cmd context-creater)
+  (silent! 'execute open-cmd)
+  (enew)
+  (let ([bufnum (bufnr "%")]
+        [ctx (context-creater)])
+    (initialize-context bufnum ctx)
+    (initialize-buffer)
+    (gosh_repl#check_output ctx 250)
+    ;since a buffer number changed, it is a resetup.
+    (unlet (ref gosh-context bufnum))
+    (let1 bufnum (bufnr "%")
+      (ref-set! gosh-context bufnum ctx)
+      (ref-set! ctx 'context__bufnr bufnum))))
+
 (defun gosh_repl#ui#open_new_repl (:rest cmd);{{{
-  (let1 bufnum (move-to-window "filetype" "gosh-repl")
-    (if bufnum
-      (cursor (line "$") (col "$"))
-      (begin
-        (silent! 'execute (get-buffer-open-cmd (get cmd 0 g:gosh_buffer_direction)))
-        (enew)
-        (let* ([bufnum (bufnr "%")]
-               [ctx (gosh_repl#create_gosh_context insert-output exit-callback)])
-          (initialize-context bufnum ctx)
-          (initialize-buffer)
-          (gosh_repl#check_output ctx 250)
-          (unlet (ref gosh-context bufnum))
-          (let1 bufnum (bufnr "%")
-            (set! (ref gosh-context bufnum) ctx)
-            (set! (ref ctx 'context__bufnr) bufnum)))))
-    (startinsert!)));}}}
+  (if-let1 bufnum (move-to-window "filetype" "gosh-repl")
+    (cursor (line "$") (col "$"))
+    (create-gosh-repl-buffer
+      (get-buffer-open-cmd (get cmd 0 g:gosh_buffer_direction))
+      (pa$0 gosh_repl#create_gosh_context insert-output exit-callback)))
+  (startinsert!));}}}
 
 (defun gosh_repl#ui#open_new_repl_with_buffer (:rest cmd);{{{
   (let1 cur-bufnum (bufnr "%")
-    (silent! 'execute (get-buffer-open-cmd (get cmd 0 g:gosh_buffer_direction)))
-    (enew)
-    (let ([bufnum (bufnr "%")]
-          [ctx (gosh_repl#create_gosh_context_with_buf
-                 insert-output cur-bufnum exit-callback)])
-      (initialize-context bufnum ctx)
-      (initialize-buffer)
-      (gosh_repl#check_output ctx 250)
-      ;since a buffer number changed, it is a resetup.
-      (unlet (ref gosh-context bufnum))
-      (let1 bufnum (bufnr "%")
-        (set! (ref gosh-context bufnum) ctx))))
+    (create-gosh-repl-buffer
+      (get-buffer-open-cmd (get cmd 0 g:gosh_buffer_direction))
+      (pa$0 gosh_repl#create_gosh_context_with_buf
+            insert-output cur-bufnum exit-callback)))
   (startinsert!));}}}
 
 (defun get-buffer-open-cmd (direc);{{{
   (if (=~# direc "^v")
-    (string-append g:gosh_buffer_width ":vs")
-    (string-append g:gosh_buffer_height ":sp")));}}}
+    (s+ g:gosh_buffer_width ":vs")
+    (s+ g:gosh_buffer_height ":sp")));}}}
 
 (defun initialize-context (bufnum ctx);{{{
-  (set! (ref ctx 'context__bufnr) bufnum)
-  (set! (ref ctx '_input_history_index) 0)
-  (set! (ref ctx 'context__is_buf_closed) 0)
-  (set! (ref gosh-context bufnum) ctx));}}}
+  (ref-set! ctx 'context__bufnr bufnum)
+  (ref-set! ctx '_input_history_index 0)
+  (ref-set! ctx 'context__is_buf_closed 0)
+  (ref-set! gosh-context bufnum ctx));}}}
 
 (defun insert-output (ctx text);{{{
   (when (empty text)
@@ -88,14 +86,14 @@
         (add text-list cur-line-text)
         (begin
           (set! prompt (ref text-list -1))
-          (+= col (len prompt))
+          (inc! col (len prompt))
           (.= (ref text-list -1) cur-line-text)))
       (dolist [text text-list]
         (setline line text)
-        (+= line 1))
-      (-= line 1)
+        (inc! line))
+      (dec! line)
       (unless (empty prompt)
-        (set! (ref ctx 'prompt_history line) prompt))
+        (ref-set! ctx 'prompt_history line prompt))
       (cursor line col)
       ;for screen update ...
       (winline)
@@ -114,11 +112,8 @@
 
 (defun initialize-buffer ();{{{
   (let* ([cap "[gosh REPL"]
-         [c (count-window "filetype" "gosh-repl")]
-         [cap (string-append
-                (if c (string-append cap "-" (+ c 1)) cap)
-                "]")])
-    (edit (qq= cap))
+         [c (count-window "filetype" "gosh-repl")])
+    (edit (qq= (s+ (if c (s+ cap "-" (+ c 1)) cap) "]")))
     (setlocal 'buftype 'nofile 'noswapfile)
     (setlocal 'bufhidden 'delete)
     (setlocal 'nonumber)
@@ -141,7 +136,7 @@
 (defun unload-buffer ();{{{
   (when (has_key gosh-context (bufnr "%"))
     (let1 ctx (ref gosh-context (bufnr "%"))
-      (set! (ref ctx 'context__is_buf_closed) 1)
+      (ref-set! ctx 'context__is_buf_closed 1)
       (gosh_repl#destry_gosh_context ctx))));}}}
 
 (defun cursor-hold (mode);{{{
@@ -180,20 +175,17 @@
       (when (!= cur-bufnum repl-bufnum)
         (mark-back-to-window)
         (move-to-window "filetype" "gosh-repl"))
-      "% delete _"
+      (raw-vimscript "% delete _")
       (let1 bufnum (bufnr "%")
         (when (has_key gosh-context bufnum)
           (gosh_repl#destry_gosh_context (ref gosh-context bufnum))
           (let1 ctx (gosh_repl#create_gosh_context exit-callback)
-            (set! (ref ctx 'context__bufnr) bufnum)
-            (set! (ref gosh-context bufnum) ctx)
+            (ref-set! ctx 'context__bufnr bufnum)
+            (ref-set! gosh-context bufnum ctx)
             (gosh_repl#check_output ctx 150))))
       (when (!= cur-bufnum repl-bufnum)
         (back-to-marked-window)))
-    (begin
-      (echohl 'WarningMsg)
-      (echomsg "use only in the GoshREPL buffer")
-      (echohl 'None))));}}}
+    (echo-war "use only in the GoshREPL buffer")));}}}
 
 (defun gosh_repl#ui#execute (text bufnum is-insert);{{{
   (let1 ctx (gosh_repl#ui#get_context bufnum)
@@ -203,11 +195,9 @@
     (gosh_repl#execute_text ctx text)
     (execute ":$ normal o")
     (let1 l (line ".")
-      (setline l (string-append
-                   (repeat " " (lispindent l))
-                   (getline l))))
+      (setline l (s+ (repeat " " (lispindent l)) (getline l))))
     (let1 output? (gosh_repl#check_output ctx 100)
-      (set! (ref ctx '_input_history_index) 0)
+      (ref-set! ctx '_input_history_index 0)
       (if (!= (bufnr "%") bufnum)
         (back-to-marked-window "_execute")
         (startinsert!))
@@ -222,7 +212,7 @@
   (let1 tmp @@
     (silent 'normal 'gvy)
     (begin0 @@
-      (set! @@ tmp))));}}}
+            (set! @@ tmp))));}}}
 
 (defun gosh_repl#ui#send_text_block () :range;{{{
   (let ([v (visualmode)]
@@ -235,10 +225,10 @@
         (dolist [line-text (line-split selected)]
           ;chomp prompt
           (let1 prompt (gosh_repl#get_prompt ctx line)
-            (when (=~# line-text (string-append "^" prompt))
+            (when (=~# line-text (s+ "^" prompt))
               (set! line-text (subseq line-text (len prompt)))))
           (.= text " " line-text)
-          (+= line 1)))
+          (inc! line)))
       (set! text (join (line-split selected) " ")))
     (gosh_repl#ui#send_text text)));}}}
 
@@ -260,7 +250,7 @@
   (if-let1 repl-bufnum (find-buffer "filetype" "gosh-repl")
     (let1 nr (move-to-window "let" "gosh_repl_all_line")
       (if nr
-        "% delete _"
+        (raw-vimscript "% delete _")
         (begin
           (execute (calc-split-window-direction (bufnr "%")) " split")
           (enew)
@@ -275,15 +265,12 @@
       (let ([ctx (gosh_repl#ui#get_context repl-bufnum)]
             [line 1])
         (dolist [text (ref ctx 'lines)]
-          (setline line (string-append (repeat " " (lispindent line))  (strtrim text)))
-          (+= line 1)
+          (setline line (s+ (repeat " " (lispindent line))  (strtrim text)))
+          (inc! line)
           (execute "normal o")
           (stopinsert))
         (execute line "delete _")))
-    (begin
-      (echohl 'WarningMsg)
-      (echomsg "gosh-repl buffer not found.")
-      (echohl 'None))));}}}
+    (echo-war "gosh-repl buffer not found.")));}}}
 
 (defun calc-split-window-direction (bufnum);{{{
   (if (< (* (winwidth bufnum) 2) (* (winheight bufnum) 5))
@@ -293,51 +280,56 @@
 ;
 ;window operation
 
-(defun count-window (kind val);{{{
+(defmacro winbuf-for-each (winnum-sym bufnum-sym . body);{{{
+  `(dolist [,winnum-sym (range 0 (winnr "$"))]
+     (let1 ,bufnum-sym (winbufnr ,winnum-sym)
+       ,@body)));}}}
+
+(defun count-window (kind val) ;{{{
   (rlet1 c 0
-    (dolist [i (range 0 (winnr "$"))]
-      (let1 n (winbufnr i)
-        (cond
-          [(==# kind "filetype")
-           (when (==# (getbufvar n "&filetype") val)
-             (+= c 1))]
-          [(==# kind "let")
-           (when (getbufvar n val)
-             (+= c 1))])))));}}}
+    (winbuf-for-each 
+      i n
+      (cond
+        [(==# kind "filetype")
+         (when (==# (getbufvar n "&filetype") val)
+           (inc! c))]
+        [(==# kind "let")
+         (when (getbufvar n val)
+           (inc! c))])))) ;}}}
 
 (defun move-to-buffer (bufnum);{{{
-  (dolist [i (range 0 (winnr "$"))]
-    (let1 n (winbufnr i)
-      (when (== bufnum n)
-        (when (!= i 0)
-          (execute i "wincmd w"))
-        (return n))))
-  #f);}}}
+  (winbuf-for-each 
+    i n
+    (when (== bufnum n)
+      (when (!= i 0)
+        (execute i "wincmd w"))
+      (return n)))
+  #f) ;}}}
 
 (defun move-to-window (kind val);{{{
-  (dolist [i (range 0 (winnr "$"))]
-    (let1 n (winbufnr i)
-      (when (cond
-              [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
-              [(==# kind "let") (getbufvar n val)]
-              [else 0])
-        (when (!= i 0)
-          (execute i "wincmd w"))
-        (return n))))
+  (winbuf-for-each 
+    i n
+    (when (cond
+            [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
+            [(==# kind "let") (getbufvar n val)]
+            [else 0])
+      (when (!= i 0)
+        (execute i "wincmd w"))
+      (return n)))
   #f);}}}
 
 (defun find-buffer (kind val);{{{
-  (dolist [i (range 0 (winnr "$"))]
-    (let1 n (winbufnr i)
-      (when (cond
-              [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
-              [(==# kind "let") (getbufvar n val)]
-              [else 0])
-        (return n))))
+  (winbuf-for-each 
+    i n
+    (when (cond
+            [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
+            [(==# kind "let") (getbufvar n val)]
+            [else 0])
+      (return n)))
   #f);}}}
 
-(defun mark-back-to-window (:rest mark);{{{
-  (execute (string-append "let w:" (get mark 0 "_ref_back") " = 1")));}}}
+(defun mark-back-to-window (:rest mark) ;{{{
+  (execute (s+ "let w:" (get mark 0 "_ref_back") " = 1"))) ;}}}
 
 (defun unmark-back-to-window ();{{{
   (unlet! w:_ref_back));}}}
@@ -349,7 +341,7 @@
         (when (gettabwinvar t w mark)
           (execute "tabnext" t)
           (execute w "wincmd w")
-          (execute (string-append "unlet! w:" mark)))))));}}}
+          (execute (s+ "unlet! w:" mark)))))));}}}
 
 ;
 ;util

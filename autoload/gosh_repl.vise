@@ -23,8 +23,10 @@
 ;     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.;}}}
 ;=============================================================================
 
+(include "common-macro.vise")
+
 (defvar gosh-repl-directory (substitute (expand "<sfile>:p:h") "\\" "/" "g"))
-(defvar gosh-repl-body-path (string-append gosh-repl-directory "/gosh_repl/repl.scm"))
+(defvar gosh-repl-body-path (s+ gosh-repl-directory "/gosh_repl/repl.scm"))
 
 (defun enable-auto-use-exp ();{{{
   (if g:gosh-enable-auto-use
@@ -39,27 +41,33 @@
     (prompt_history (dict))
     (exit_callback exit-callback)));}}}
 
+(defmacro open-goshrepl body;{{{
+  `(vimproc#popen2
+     (s+ "gosh -b"
+         " -u gauche.interactive"
+         " -I" gosh-repl-directory "/gosh_repl/"
+         ,@body)));}}}
+
+(defmacro gosh-repl-body ();{{{
+  `(s+ " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\""));}}}
+
+(defmacro open-goshrepl-with-body ();{{{
+  `(open-goshrepl (gosh-repl-body)));}}}
+
 (defun gosh_repl#create_gosh_context (Printer . callback);{{{
-  (create-context (vimproc#popen2 
-                    (string-append "gosh -b"
-                                   " -u gauche.interactive"
-                                   " -I" gosh-repl-directory "/gosh_repl/"
-                                   " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\""))
+  (create-context (open-goshrepl-with-body)
                   Printer
-                  (get callback 0 0)));}}}
+                  (get-rest callback 0)));}}}
 
 (defun gosh_repl#create_gosh_context_with_buf (Printer bufnr . callback);{{{
-  (let ((proc (vimproc#popen2 (string-append
-                                "gosh -b"
-                                " -u gauche.interactive"
-                                " -I" gosh-repl-directory "/gosh_repl/")))
+  (let ((proc (open-goshrepl))
         (exception #f))
     (try 
       (begin
         (dolist [line (getbufline bufnr 1 "$")]
-          ((ref proc 'stdin 'write) (string-append line "\n")))
+          ((ref proc 'stdin 'write) (s+ line "\n")))
         (sleep '100ms)
-        ((ref proc 'stdin 'write) (string-append "(begin " (enable-auto-use-exp) " (include \"" gosh-repl-body-path "\"))\n")))
+        ((ref proc 'stdin 'write) (s+ (gosh-repl-body) "\n")))
       [else
         (set! exception #t)])
     (sleep '100ms)
@@ -70,17 +78,11 @@
     (create-context
       (if exception
         (begin
-          (echohl 'Error)
-          (echomsg (join ((ref proc 'stdout 'read_lines)) "\n"))
-          (echohl 'None)
-          (vimproc#popen2 (string-append
-                            "gosh -b" 
-                            " -u gauche.interactive"
-                            " -I" gosh-repl-directory "/gosh_repl"
-                            " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\"")))
+          (echo-err (join ((ref proc 'stdout 'read_lines)) "\n"))
+          (open-goshrepl-with-body))
         proc)
       Printer 
-      (get callback 0 0))));}}}
+      (get-rest callback 0))));}}}
 
 (defun gosh_repl#destry_gosh_context (context);{{{
   ((ref context'proc'stdin'close))
@@ -109,7 +111,7 @@
       (add (ref context'lines) text)
       ((ref context'proc'stdin'write) 
        (if (!~# text "\n$")
-         (string-append text "\n")
+         (s+ text "\n")
          text)))));}}}
 
 (defun gosh_repl#check_output (context . timeout);{{{
@@ -132,7 +134,7 @@
                (res ((ref port 'read) -1 timeout)))
       (if (empty res)
         out
-        (loop (string-append out res)
+        (loop (s+ out res)
               ((ref port 'read) -1 15))))));}}}
 
 (defun gosh_repl#get_prompt (context line);{{{

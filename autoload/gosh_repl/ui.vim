@@ -1,8 +1,18 @@
 " Generated automatically DO NOT EDIT
 
-function! s:SID_PREFIX_376()
-  return matchstr(expand('<sfile>'),'<SNR>\d\+_\zeSID_PREFIX_376$')
+function! s:display410()dict
+  return gosh_repl#create_gosh_context_with_buf(function(s:SID_PREFIX_408() . 'insert_output'),self['cur_bufnum_409'],function(s:SID_PREFIX_408() . 'exit_callback'))
 endfunction
+
+function! s:SID_PREFIX_408()
+  return matchstr(expand('<sfile>'),'<SNR>\d\+_\zeSID_PREFIX_408$')
+endfunction
+
+function! s:display407()dict
+  return gosh_repl#create_gosh_context(function(s:SID_PREFIX_408() . 'insert_output'),function(s:SID_PREFIX_408() . 'exit_callback'))
+endfunction
+
+let s:dict_type_404 = type({})
 
 let s:gosh_context = {}
 
@@ -10,38 +20,33 @@ let s:updatetime_save = &updatetime
 
 let b:lispwords = ""
 
+function! s:create_gosh_repl_buffer(open_cmd,Context_Creater)
+  silent! execute a:open_cmd
+  enew
+  let bufnum_402 = bufnr("%")
+  let ctx_403 = (type(a:Context_Creater)==s:dict_type_404) ? a:Context_Creater.func() : a:Context_Creater()
+  call s:initialize_context(bufnum_402,ctx_403)
+  call s:initialize_buffer()
+  call gosh_repl#check_output(ctx_403,250)
+  unlet s:gosh_context[bufnum_402]
+  let bufnum_405 = bufnr("%")
+  let s:gosh_context[bufnum_405] = ctx_403
+  let ctx_403["context__bufnr"] = bufnum_405
+endfunction
+
 function! gosh_repl#ui#open_new_repl(...)
-  let bufnum_373 = s:move_to_window("filetype","gosh-repl")
-  if bufnum_373
+  let bufnum_406 = s:move_to_window("filetype","gosh-repl")
+  if bufnum_406
     call cursor(line("$"),col("$"))
   else
-    silent! execute s:get_buffer_open_cmd(get(a:000,0,g:gosh_buffer_direction))
-    enew
-    let bufnum_374 = bufnr("%")
-    let ctx_375 = gosh_repl#create_gosh_context(function(s:SID_PREFIX_376() . 'insert_output'),function(s:SID_PREFIX_376() . 'exit_callback'))
-    call s:initialize_context(bufnum_374,ctx_375)
-    call s:initialize_buffer()
-    call gosh_repl#check_output(ctx_375,250)
-    unlet s:gosh_context[bufnum_374]
-    let bufnum_377 = bufnr("%")
-    let s:gosh_context[bufnum_377] = ctx_375
-    let ctx_375["context__bufnr"] = bufnum_377
+    call s:create_gosh_repl_buffer(s:get_buffer_open_cmd(get(a:000,0,g:gosh_buffer_direction)),{'func':function(s:SID_PREFIX_408() . 'display407')})
   endif
   startinsert!
 endfunction
 
 function! gosh_repl#ui#open_new_repl_with_buffer(...)
-  let cur_bufnum_378 = bufnr("%")
-  silent! execute s:get_buffer_open_cmd(get(a:000,0,g:gosh_buffer_direction))
-  enew
-  let bufnum_379 = bufnr("%")
-  let ctx_380 = gosh_repl#create_gosh_context_with_buf(function(s:SID_PREFIX_376() . 'insert_output'),cur_bufnum_378,function(s:SID_PREFIX_376() . 'exit_callback'))
-  call s:initialize_context(bufnum_379,ctx_380)
-  call s:initialize_buffer()
-  call gosh_repl#check_output(ctx_380,250)
-  unlet s:gosh_context[bufnum_379]
-  let bufnum_381 = bufnr("%")
-  let s:gosh_context[bufnum_381] = ctx_380
+  let cur_bufnum_409 = bufnr("%")
+  call s:create_gosh_repl_buffer(s:get_buffer_open_cmd(get(a:000,0,g:gosh_buffer_direction)),{'func':function(s:SID_PREFIX_408() . 'display410'),'cur_bufnum_409':cur_bufnum_409})
   startinsert!
 endfunction
 
@@ -64,35 +69,35 @@ function! s:insert_output(ctx,text)
   if empty(a:text)
     return
   endif
-  let bufnum_382 = bufnr("%")
-  if bufnum_382 != a:ctx["context__bufnr"]
+  let bufnum_411 = bufnr("%")
+  if bufnum_411 != a:ctx["context__bufnr"]
     call s:mark_back_to_window("_output")
     call s:move_to_buffer(a:ctx["context__bufnr"])
   endif
-  let col_383 = col(".")
-  let line_384 = line(".")
-  let cur_line_text_385 = getline(line_384)
-  let text_list_386 = split(a:text,"\n")
-  let prompt_387 = ""
+  let col_412 = col(".")
+  let line_413 = line(".")
+  let cur_line_text_414 = getline(line_413)
+  let text_list_415 = split(a:text,"\n")
+  let prompt_416 = ""
   if a:text[-1] ==# "\n"
-    call add(text_list_386,cur_line_text_385)
+    call add(text_list_415,cur_line_text_414)
   else
-    let prompt_387 = text_list_386[-1]
-    let col_383 += (len(prompt_387))
-    let text_list_386[-1] .= cur_line_text_385
+    let prompt_416 = text_list_415[-1]
+    let col_412 += (len(prompt_416))
+    let text_list_415[-1] .= cur_line_text_414
   endif
-  for text_388 in text_list_386
-    call setline(line_384,text_388)
-    let line_384 += 1
+  for text_417 in text_list_415
+    call setline(line_413,text_417)
+    let line_413 += 1
   endfor
-  let line_384 -= 1
-  if !(empty(prompt_387))
-    let a:ctx["prompt_history"][line_384] = prompt_387
+  let line_413 -= 1
+  if !(empty(prompt_416))
+    let a:ctx["prompt_history"][line_413] = prompt_416
   endif
-  call cursor(line_384,col_383)
+  call cursor(line_413,col_412)
   call winline()
-  if bufnum_382 != a:ctx["context__bufnr"]
-    call s:back_to_marked_window("_output")
+  if bufnum_411 != a:ctx["context__bufnr"]
+    return s:back_to_marked_window("_output")
   endif
 endfunction
 
@@ -108,14 +113,13 @@ function! s:exit_callback(ctx)
       autocmd! *
     augroup END
   endif
-  call s:buf_leave()
+  return s:buf_leave()
 endfunction
 
 function! s:initialize_buffer()
-  let cap_389 = "[gosh REPL"
-  let c_390 = s:count_window("filetype","gosh-repl")
-  let cap_391 = (((c_390)?cap_389 . "-" . (c_390 + 1) : cap_389)) . "]"
-  edit `=cap_391`
+  let cap_418 = "[gosh REPL"
+  let c_419 = s:count_window("filetype","gosh-repl")
+  edit `=(((c_419)?cap_418 . "-" . (c_419 + 1) : cap_418)) . "]"`
   setlocal buftype=nofile noswapfile
   setlocal bufhidden=delete
   setlocal nonumber
@@ -131,7 +135,7 @@ function! s:initialize_buffer()
     autocmd CursorMovedI <buffer> call s:check_output(0)
   augroup END
   call s:buf_enter()
-  call gosh_repl#mapping#initialize()
+  return gosh_repl#mapping#initialize()
 endfunction
 
 function! gosh_repl#ui#get_context(bufnr)
@@ -140,9 +144,9 @@ endfunction
 
 function! s:unload_buffer()
   if has_key(s:gosh_context,bufnr("%"))
-    let ctx_392 = s:gosh_context[bufnr("%")]
-    let ctx_392["context__is_buf_closed"] = 1
-    call gosh_repl#destry_gosh_context(ctx_392)
+    let ctx_420 = s:gosh_context[bufnr("%")]
+    let ctx_420["context__is_buf_closed"] = 1
+    return gosh_repl#destry_gosh_context(ctx_420)
   endif
 endfunction
 
@@ -156,8 +160,8 @@ function! s:cursor_hold(mode)
 endfunction
 
 function! s:check_output(timeout)
-  for ctx_393 in values(s:gosh_context)
-    call gosh_repl#check_output(ctx_393,a:timeout)
+  for ctx_421 in values(s:gosh_context)
+    call gosh_repl#check_output(ctx_421,a:timeout)
   endfor
 endfunction
 
@@ -189,24 +193,24 @@ function! s:restore_updatetime()
 endfunction
 
 function! gosh_repl#ui#clear_buffer()
-  let repl_bufnum_394 = s:find_buffer("filetype","gosh-repl")
-  if repl_bufnum_394
-    let cur_bufnum_395 = bufnr("%")
-    if cur_bufnum_395 != repl_bufnum_394
+  let repl_bufnum_422 = s:find_buffer("filetype","gosh-repl")
+  if repl_bufnum_422
+    let cur_bufnum_423 = bufnr("%")
+    if cur_bufnum_423 != repl_bufnum_422
       call s:mark_back_to_window()
       call s:move_to_window("filetype","gosh-repl")
     endif
-    % delete _
-    let bufnum_396 = bufnr("%")
-    if has_key(s:gosh_context,bufnum_396)
-      call gosh_repl#destry_gosh_context(s:gosh_context[bufnum_396])
-      let ctx_397 = gosh_repl#create_gosh_context(function(s:SID_PREFIX_376() . 'exit_callback'))
-      let ctx_397["context__bufnr"] = bufnum_396
-      let s:gosh_context[bufnum_396] = ctx_397
-      call gosh_repl#check_output(ctx_397,150)
+% delete _
+    let bufnum_424 = bufnr("%")
+    if has_key(s:gosh_context,bufnum_424)
+      call gosh_repl#destry_gosh_context(s:gosh_context[bufnum_424])
+      let ctx_425 = gosh_repl#create_gosh_context(function(s:SID_PREFIX_408() . 'exit_callback'))
+      let ctx_425["context__bufnr"] = bufnum_424
+      let s:gosh_context[bufnum_424] = ctx_425
+      call gosh_repl#check_output(ctx_425,150)
     endif
-    if cur_bufnum_395 != repl_bufnum_394
-      call s:back_to_marked_window()
+    if cur_bufnum_423 != repl_bufnum_422
+      return s:back_to_marked_window()
     endif
   else
     echohl WarningMsg
@@ -216,23 +220,23 @@ function! gosh_repl#ui#clear_buffer()
 endfunction
 
 function! gosh_repl#ui#execute(text,bufnum,is_insert)
-  let ctx_398 = gosh_repl#ui#get_context(a:bufnum)
+  let ctx_426 = gosh_repl#ui#get_context(a:bufnum)
   if (bufnr("%")) != a:bufnum
     call s:mark_back_to_window("_execute")
     call s:move_to_buffer(a:bufnum)
   endif
-  call gosh_repl#execute_text(ctx_398,a:text)
+  call gosh_repl#execute_text(ctx_426,a:text)
   execute ":$ normal o"
-  let l_399 = line(".")
-  call setline(l_399,(repeat(" ",lispindent(l_399))) . (getline(l_399)))
-  let outputP_400 = gosh_repl#check_output(ctx_398,100)
-  let ctx_398["_input_history_index"] = 0
+  let l_427 = line(".")
+  call setline(l_427,(repeat(" ",lispindent(l_427))) . (getline(l_427)))
+  let outputP_428 = gosh_repl#check_output(ctx_426,100)
+  let ctx_426["_input_history_index"] = 0
   if (bufnr("%")) != a:bufnum
     call s:back_to_marked_window("_execute")
   else
     startinsert!
   endif
-  return outputP_400
+  return outputP_428
 endfunction
 
 function! s:line_split(text_block)
@@ -240,60 +244,60 @@ function! s:line_split(text_block)
 endfunction
 
 function! s:get_visual_block()
-  let tmp_401 = @@
+  let tmp_429 = @@
   silent normal gvy
-  let temp372_402 = @@
-  let @@ = tmp_401
-  return temp372_402
+  let temp399_430 = @@
+  let @@ = tmp_429
+  return temp399_430
 endfunction
 
 function! gosh_repl#ui#send_text_block()range
-  let v_403 = visualmode()
-  let selected_404 = s:get_visual_block()
-  let text_405 = ""
-  if (&filetype ==# "gosh-repl") && (v_403 ==# "v") && (v_403 ==# "V")
-    let bufnum_406 = bufnr("%")
-    let ctx_407 = gosh_repl#ui#get_context(bufnum_406)
-    let line_408 = a:firstline
-    for line_text_409 in s:line_split(selected_404)
-      let prompt_410 = gosh_repl#get_prompt(ctx_407,line_408)
-      if line_text_409 =~# "^" . prompt_410
-        let line_text_409 = line_text_409[len(prompt_410):]
+  let v_431 = visualmode()
+  let selected_432 = s:get_visual_block()
+  let text_433 = ""
+  if (&filetype ==# "gosh-repl") && (v_431 ==# "v") && (v_431 ==# "V")
+    let bufnum_434 = bufnr("%")
+    let ctx_435 = gosh_repl#ui#get_context(bufnum_434)
+    let line_436 = a:firstline
+    for line_text_437 in s:line_split(selected_432)
+      let prompt_438 = gosh_repl#get_prompt(ctx_435,line_436)
+      if line_text_437 =~# "^" . prompt_438
+        let line_text_437 = line_text_437[len(prompt_438):]
       endif
-      let text_405 .= " " . line_text_409
-      let line_408 += 1
+      let text_433 .= " " . line_text_437
+      let line_436 += 1
     endfor
   else
-    let text_405 = join(s:line_split(selected_404)," ")
+    let text_433 = join(s:line_split(selected_432)," ")
   endif
-  call gosh_repl#ui#send_text(text_405)
+  return gosh_repl#ui#send_text(text_433)
 endfunction
 
 function! gosh_repl#ui#send_text(text)
-  let mode_411 = mode()
-  let filetype_412 = &filetype
-  if filetype_412 !=# "gosh-repl"
+  let mode_439 = mode()
+  let filetype_440 = &filetype
+  if filetype_440 !=# "gosh-repl"
     call s:mark_back_to_window("_send_text")
     call gosh_repl#ui#open_new_repl()
   endif
-  let bufnum_413 = bufnr("%")
-  if !(gosh_repl#ui#execute(a:text,bufnum_413,0))
-    call gosh_repl#check_output(gosh_repl#ui#get_context(bufnum_413),1000)
+  let bufnum_441 = bufnr("%")
+  if !(gosh_repl#ui#execute(a:text,bufnum_441,0))
+    call gosh_repl#check_output(gosh_repl#ui#get_context(bufnum_441),1000)
   endif
-  if filetype_412 !=# "gosh-repl"
+  if filetype_440 !=# "gosh-repl"
     call s:back_to_marked_window("_send_text")
   endif
-  if mode_411 ==# "n"
+  if mode_439 ==# "n"
     stopinsert
   endif
 endfunction
 
 function! gosh_repl#ui#show_all_line()
-  let repl_bufnum_414 = s:find_buffer("filetype","gosh-repl")
-  if repl_bufnum_414
-    let nr_415 = s:move_to_window("let","gosh_repl_all_line")
-    if nr_415
-      % delete _
+  let repl_bufnum_442 = s:find_buffer("filetype","gosh-repl")
+  if repl_bufnum_442
+    let nr_443 = s:move_to_window("let","gosh_repl_all_line")
+    if nr_443
+% delete _
     else
       execute s:calc_split_window_direction(bufnr("%")) " split"
       enew
@@ -304,15 +308,15 @@ function! gosh_repl#ui#show_all_line()
       setlocal syntax=scheme
       let b:gosh_repl_all_line = 1
     endif
-    let ctx_416 = gosh_repl#ui#get_context(repl_bufnum_414)
-    let line_417 = 1
-    for text_418 in ctx_416["lines"]
-      call setline(line_417,(repeat(" ",lispindent(line_417))) . (s:strtrim(text_418)))
-      let line_417 += 1
+    let ctx_444 = gosh_repl#ui#get_context(repl_bufnum_442)
+    let line_445 = 1
+    for text_446 in ctx_444["lines"]
+      call setline(line_445,(repeat(" ",lispindent(line_445))) . (s:strtrim(text_446)))
+      let line_445 += 1
       execute "normal o"
       stopinsert
     endfor
-    execute line_417 "delete _"
+    execute line_445 "delete _"
   else
     echohl WarningMsg
     echomsg "gosh-repl buffer not found."
@@ -329,53 +333,53 @@ function! s:calc_split_window_direction(bufnum)
 endfunction
 
 function! s:count_window(kind,val)
-  let c_419 = 0
-  for i_420 in range(0,winnr("$"))
-    let n_421 = winbufnr(i_420)
+  let c_447 = 0
+  for i_448 in range(0,winnr("$"))
+    let n_449 = winbufnr(i_448)
     if a:kind ==# "filetype"
-      if (getbufvar(n_421,"&filetype")) ==# a:val
-        let c_419 += 1
+      if (getbufvar(n_449,"&filetype")) ==# a:val
+        let c_447 += 1
       endif
     elseif a:kind ==# "let"
-      if getbufvar(n_421,a:val)
-        let c_419 += 1
+      if getbufvar(n_449,a:val)
+        let c_447 += 1
       endif
     endif
   endfor
-  return c_419
+  return c_447
 endfunction
 
 function! s:move_to_buffer(bufnum)
-  for i_422 in range(0,winnr("$"))
-    let n_423 = winbufnr(i_422)
-    if a:bufnum == n_423
-      if i_422 != 0
-        execute i_422 "wincmd w"
+  for i_450 in range(0,winnr("$"))
+    let n_451 = winbufnr(i_450)
+    if a:bufnum == n_451
+      if i_450 != 0
+        execute i_450 "wincmd w"
       endif
-      return n_423
+      return n_451
     endif
   endfor
   return 0
 endfunction
 
 function! s:move_to_window(kind,val)
-  for i_424 in range(0,winnr("$"))
-    let n_425 = winbufnr(i_424)
-    if ((a:kind ==# "filetype")?((getbufvar(n_425,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_425,a:val)) : (0))))
-      if i_424 != 0
-        execute i_424 "wincmd w"
+  for i_452 in range(0,winnr("$"))
+    let n_453 = winbufnr(i_452)
+    if ((a:kind ==# "filetype")?((getbufvar(n_453,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_453,a:val)) : (0))))
+      if i_452 != 0
+        execute i_452 "wincmd w"
       endif
-      return n_425
+      return n_453
     endif
   endfor
   return 0
 endfunction
 
 function! s:find_buffer(kind,val)
-  for i_426 in range(0,winnr("$"))
-    let n_427 = winbufnr(i_426)
-    if ((a:kind ==# "filetype")?((getbufvar(n_427,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_427,a:val)) : (0))))
-      return n_427
+  for i_454 in range(0,winnr("$"))
+    let n_455 = winbufnr(i_454)
+    if ((a:kind ==# "filetype")?((getbufvar(n_455,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_455,a:val)) : (0))))
+      return n_455
     endif
   endfor
   return 0
@@ -390,13 +394,13 @@ function! s:unmark_back_to_window()
 endfunction
 
 function! s:back_to_marked_window(...)
-  let mark_428 = get(a:000,0,"_ref_back")
-  for t_429 in range(1,tabpagenr("$"))
-    for w_430 in range(1,winnr("$"))
-      if gettabwinvar(t_429,w_430,mark_428)
-        execute "tabnext" t_429
-        execute w_430 "wincmd w"
-        execute "unlet! w:" . mark_428
+  let mark_456 = get(a:000,0,"_ref_back")
+  for t_457 in range(1,tabpagenr("$"))
+    for w_458 in range(1,winnr("$"))
+      if gettabwinvar(t_457,w_458,mark_456)
+        execute "tabnext" t_457
+        execute w_458 "wincmd w"
+        execute "unlet! w:" . mark_456
       endif
     endfor
   endfor

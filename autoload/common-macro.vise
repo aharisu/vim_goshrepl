@@ -1,0 +1,67 @@
+
+(defmacro echo-war (string)
+  `(begin
+     (echohl 'WarningMsg)
+     (echomsg ,string)
+     (echohl 'None)))
+
+(defmacro echo-err (string)
+  `(begin
+     (echohl 'Error)
+     (echomsg ,string)
+     (echohl 'None)))
+
+(defmacro inc!
+  (match
+    [(_ sym) `(+= ,sym 1)]
+    [(_ sym delta) `(+= ,sym ,delta)]))
+
+(defmacro dec!
+  (match
+    [(_ sym) `(-= ,sym 1)]
+    [(_ sym delta) `(-= ,sym ,delta)]))
+
+(defmacro s+ str-list
+  `(string-append ,@str-list))
+
+(defmacro ref-set! (sym . arg)
+  (when (< (length arg) 2)
+    (vise-error "Bad ref-set! syntax. (ref-set! sym refer ... vall)\n~a" `(ref-set! ,sym ,@arg)))
+  `(set! (ref ,sym ,@(drop-right arg 1)) ,(last arg)))
+
+(defmacro (get-rest sym def)
+  `(get ,sym 0 ,def))
+
+(defmacro pa$n (n proc . args)
+  (let1 arg (map (lambda (n) (gensym "pa_")) (iota n))
+    `(lambda ,arg (,proc ,@args ,@arg))))
+
+(defmacro pa$0 (proc . args)
+  `(pa$n 0 ,proc ,@args))
+
+(defmacro pa$1 (proc . args)
+  `(pa$n 1 ,proc ,@args))
+
+(defmacro pa$2 (proc . args)
+  `(pa$n 2 ,proc ,@args))
+
+(defmacro pa$3 (proc . args)
+  `(pa$n 3 ,proc ,@args))
+
+(defmacro pa$4 (proc . args)
+  `(pa$n 4 ,proc ,@args))
+
+(defmacro pa$5 (proc . args)
+  `(pa$n 5 ,proc ,@args))
+
+(defmacro pa$6 (proc . args)
+  `(pa$n 6 ,proc ,@args))
+
+(defmacro .$ proc-list
+  (let1 arg (gensym "arg_")
+    `(lambda (,arg)
+       ,(fold-right
+          (lambda (p acc) (list p acc))
+          arg
+          proc-list))))
+
