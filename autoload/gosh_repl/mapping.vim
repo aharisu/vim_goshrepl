@@ -1,28 +1,4 @@
-"=============================================================================
-" FILE: mapping.vim
-" AUTHOR:  aharisu <foo.yobina@gmail.com>
-" Last Modified: 29 Apr 2012.
-" License: MIT license  {{{
-"     Permission is hereby granted, free of charge, to any person obtaining
-"     a copy of this software and associated documentation files (the
-"     "Software"), to deal in the Software without restriction, including
-"     without limitation the rights to use, copy, modify, merge, publish,
-"     distribute, sublicense, and/or sell copies of the Software, and to
-"     permit persons to whom the Software is furnished to do so, subject to
-"     the following conditions:
-"
-"     The above copyright notice and this permission notice shall be included
-"     in all copies or substantial portions of the Software.
-"
-"     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-"     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-"     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-"     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-"     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-"     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-"     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-" }}}
-"=============================================================================
+" Generated automatically DO NOT EDIT
 
 function! gosh_repl#mapping#initialize()
 
@@ -43,7 +19,7 @@ function! gosh_repl#mapping#initialize()
   inoremap <buffer><silent> <Plug>(gosh_line_replace_history_prev) <ESC>:<C-u>call <SID>line_replace_input_history(1)<CR>:startinsert!<CR>
   inoremap <buffer><silent> <Plug>(gosh_line_replace_history_next) <ESC>:<C-u>call <SID>line_replace_input_history(0)<CR>:startinsert!<CR>
 
-  if exists('g:gosh_no_default_keymappings') && g:gosh_no_default_keymappings
+  if (exists("g:gosh_no_default_keymappings")) && g:gosh_no_default_keymappings
     return
   endif
 
@@ -67,144 +43,114 @@ function! gosh_repl#mapping#initialize()
   imap <buffer><silent> <C-n> <Plug>(gosh_line_replace_history_next)
 
   vmap <buffer> <CR> <Plug>(gosh_repl_send_block)
+
 endfunction
 
-function! s:execute_line(is_insert)"{{{
-  let bufnr = bufnr('%')
-  let context = gosh_repl#ui#get_context(bufnr)
-  let text = gosh_repl#get_line_text(context, line('.'))
+function! s:execute_line(is_insert)
+  let bufnum_421 = bufnr("%")
+  return gosh_repl#ui#execute(gosh_repl#get_line_text(gosh_repl#ui#get_context(bufnum_421),line(".")),bufnum_421,a:is_insert)
+endfunction
 
-  call gosh_repl#ui#execute(text, bufnr, a:is_insert)
-endfunction"}}}
-
-function! s:change_line()"{{{
-  let context = gosh_repl#ui#get_context(bufnr('%'))
-  if context is 0
-    return 'ddO'
+function! s:change_line()
+  let ctx_422 = gosh_repl#ui#get_context(bufnr("%"))
+  if ctx_422 is 0
+    return "ddO"
   endif
-
-  let prompt = gosh_repl#get_prompt(context, line('.'))
-  if empty(prompt)
-    return 'ddO'
+  let prompt_423 = gosh_repl#get_prompt(ctx_422,line("."))
+  if empty(prompt_423)
+    return "ddO"
   else
-    return printf('0%dlc$', s:strchars(prompt))
+    return printf("0%dlc$",s:strchars(prompt_423))
   endif
-endfunction"}}}
+endfunction
 
-function! s:delete_backword_char()"{{{
-  let context = gosh_repl#ui#get_context(bufnr('%'))
-
-  if !pumvisible()
-    let prefix = ''
+function! s:delete_backword_char()
+  let ctx_424 = gosh_repl#ui#get_context(bufnr("%"))
+  let prefix_425 = ((!(pumvisible()))?"" : ("\<C-y>"))
+  let line_num_426 = line(".")
+  if (len(getline(line_num_426))) > (len(gosh_repl#get_prompt(ctx_424,line_num_426)))
+    return prefix_425 . ("\<BS>")
   else
-    let prefix = "\<C-y>"
+    return prefix_425
   endif
+endfunction
 
-  let line_num = line('.')
-  let line = getline(line_num)
-  if len(line) > len(gosh_repl#get_prompt(context, line_num))
-    return prefix . "\<BS>"
-  else
-    return prefix
-  endif
-endfunction"}}}
+function! s:delete_backword_line()
+  let prefix_427 = ((!(pumvisible()))?"" : ("\<C-y>"))
+  let line_num_428 = line(".")
+  let len_429 = (s:strchars(getline(line_num_428))) - (s:strchars(gosh_repl#get_prompt(gosh_repl#ui#get_context(bufnr("%")),line_num_428)))
+  return prefix_427 . (repeat("\<BS>",len_429))
+endfunction
 
-function! s:delete_backword_line()"{{{
-  if !pumvisible()
-    let prefix = ''
-  else
-    let prefix = "\<C-y>"
-  endif
-
-  let line_num = line('.')
-  let len = s:strchars(getline(line_num)) - 
-        \ s:strchars(gosh_repl#get_prompt(gosh_repl#ui#get_context(bufnr('%')), line_num))
-
-  return prefix . repeat("\<BS>", len)
-endfunction"}}}
-
-
-function! s:insert_head()"{{{
+function! s:insert_head()
   normal! 0
-  call s:insert_enter()
-endfunction"}}}
+  return s:insert_enter()
+endfunction
 
-function! s:append_end()"{{{
+function! s:append_end()
   call s:insert_enter()
   startinsert!
-endfunction"}}}
+endfunction
 
-function! s:append_enter()"{{{
-  if col('.') + 1 == col('$')
-    call s:append_end()
+function! s:append_enter()
+  if ((col(".")) + 1) == (col("$"))
+    return s:append_end()
   else
     normal! l
-    call s:insert_enter()
+    return s:insert_enter()
   endif
-endfunction"}}}
+endfunction
 
-function! s:insert_enter()"{{{
-  let context = gosh_repl#ui#get_context(bufnr('%'))
-
-  let line_num = line('.')
-  let prompt = gosh_repl#get_prompt(context, line_num)
-  if empty(prompt) && line_num != line('$')
+function! s:insert_enter()
+  let ctx_430 = gosh_repl#ui#get_context(bufnr("%"))
+  let line_num_431 = line(".")
+  let prompt_432 = gosh_repl#get_prompt(ctx_430,line_num_431)
+  if (empty(prompt_432)) && (line_num_431 != (line("$")))
     startinsert
     return
   endif
-
-  let prompt_len = s:strchars(prompt)
-  if col('.') <= prompt_len
-    if prompt_len + 1 >= col('$')
+  let prompt_len_433 = s:strchars(prompt_432)
+  if (col(".")) <= prompt_len_433
+    if (prompt_len_433 + 1) >= (col("$"))
       startinsert!
       return
     else
-      let pos = getpos('.')
-      let pos[2] = prompt_len + 1
-      call setpos('.', pos)
+      let pos_434 = getpos(".")
+      let pos_434[2] = prompt_len_433 + 1
+      call setpos(".",pos_434)
     endif
   endif
-
   startinsert
-endfunction"}}}
+endfunction
 
-function! s:line_replace_input_history(prev)"{{{
-  let context = gosh_repl#ui#get_context(bufnr('%'))
-  let lines_len = len(context.lines)
-  if lines_len == 0
+function! s:line_replace_input_history(prev)
+  let ctx_435 = gosh_repl#ui#get_context(bufnr("%"))
+  let lines_len_436 = len(ctx_435["lines"])
+  if lines_len_436 == 0
     return
   endif
-
-  let index = context._input_history_index + ((a:prev == 1) ? 1 : -1)
-
-  if index == 0
-    let text = ''
-  elseif index > 0
-    if index <= lines_len
-      let text = context.lines[-index]
+  let index_437 = ctx_435["_input_history_index"] + (((a:prev == 1)?1 : -1))
+  if index_437 == 0
+    let l:text = ""
+  elseif index_437 > 0
+    if index_437 <= lines_len_436
+      let l:text = ctx_435["lines"][-index_437]
     elseif g:gosh_enable_ring_history
-      let text = ''
-      let index = 0
+      let index_437 = 0
+      let l:text = ""
     endif
-  elseif g:gosh_enable_ring_history " index < 0
-    let index = lines_len
-    let text = context.lines[-index]
+  elseif g:gosh_enable_ring_history
+    let index_437 = lines_len_436
+    let l:text = ctx_435["lines"][-index_437]
   endif
-
-  if exists('text')
-    let line_num = line('.')
-
-    call setline(line_num, gosh_repl#get_prompt(context, line_num) . text)
-    let context._input_history_index = index
+  if exists("text")
+    let line_num_438 = line(".")
+    call setline(line_num_438,(gosh_repl#get_prompt(ctx_435,line_num_438)) . l:text)
+    let ctx_435["_input_history_index"] = index_437
   endif
-endfunction"}}}
+endfunction
 
-"
-"Util
-
-"from vital.vim plugin s:strchars"{{{
 function! s:strchars(str)
-  return strlen(substitute(copy(a:str), '.', 'x', 'g'))
-endfunction"}}}
+  return strlen(substitute(copy(a:str),".","x","g"))
+endfunction
 
-" vim: foldmethod=marker
