@@ -1,15 +1,18 @@
 
-(defmacro echo-war (string)
+(defmacro echo-war string
   `(begin
      (echohl 'WarningMsg)
-     (echomsg ,string)
+     (echomsg (s+ ,@string))
      (echohl 'None)))
 
-(defmacro echo-err (string)
+(defmacro echo-err string
   `(begin
      (echohl 'Error)
-     (echomsg ,string)
+     (echomsg (s+ ,@string))
      (echohl 'None)))
+
+(defmacro zero? (num)
+  `(== 0 ,num))
 
 (defmacro inc!
   (match
@@ -65,3 +68,46 @@
           arg
           proc-list))))
 
+(defmacro expand-wrapper (expr conv)
+  `(expand ,(fold
+              (lambda (c acc)
+                (string-append 
+                  acc
+                  (case c
+                    [(:p :path :fullpath) ":p"]
+                    [(:h :head :directory) ":h"]
+                    [(:t :tail :file) ":t"]
+                    [(:r :remove-ext) ":r"]
+                    [(:e :only-ext) ":e"]
+                    [else c])))
+              expr
+              conv)))
+
+(defmacro cur-file conv
+  `(expand-wrapper "%" ,conv))
+
+(defmacro under-cursor-file conv
+  `(expand-wrapper "<cfile>" ,conv))
+
+(defmacro cur-source-file conv
+  `(expand-wrapper "<sfile>" ,conv))
+
+(defmacro cur-source-line conv
+  `(expand-wrapper "<slnum>" ,conv))
+
+(defmacro under-cursor-word conv
+  `(expand-wrapper "<cword>" ,conv))
+
+(defmacro under-cursor-WORD conv
+  `(expand-wrapper "<cWORD>" ,conv))
+
+(defmacro switch-to-buffer (bufnum . body);{{{
+  (let ([mark-sym (x->string (gensym "switch"))])
+    `(let1 bufnum (bufnr "%")
+       (when (!= bufnum ,bufnum)
+         (defvar l:changebuf 1)
+         (ieie#mark-back-to-window ,mark-sym)
+         (ieie#move-to-buffer ,bufnum))
+       ,@body
+       (when (!= bufnum ,bufnum)
+         (ieie#back-to-marked-window ,mark-sym)))));}}}

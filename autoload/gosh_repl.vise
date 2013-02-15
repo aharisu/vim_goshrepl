@@ -1,7 +1,7 @@
 ;=============================================================================
-; FILE: gosh_repl.vim
+; FILE: ieie.vise
 ; AUTHOR:  aharisu <foo.yobina@gmail.com>
-; Last Modified: 30 Oct 2012.
+; Last Modified: 15 Feb 2013.
 ; License: MIT license;{{{
 ;     Permission is hereby granted, free of charge, to any person obtaining
 ;     a copy of this software and associated documentation files (the
@@ -25,21 +25,22 @@
 
 (include "common-macro.vise")
 
-(defvar gosh-repl-directory (substitute (expand "<sfile>:p:h") "\\" "/" "g"))
+(defvar gosh-repl-directory (substitute (cur-source-file :fullpath :directory) "\\" "/" "g"))
 (defvar gosh-repl-body-path (s+ gosh-repl-directory "/gosh_repl/repl.scm"))
 
-(defun enable-auto-use-exp ();{{{
-  (if g:gosh-enable-auto-use
-    "(define *enable-auto-use* #t)"
-    "(define *enable-auto-use* #f)"));}}}
+(defmacro enable-auto-use-exp ();{{{
+  `(if g:gosh-enable-auto-use
+     "(define *enable-auto-use* #t)"
+     "(define *enable-auto-use* #f)"));}}}
 
-(defun create-context (proc printer exit-callback);{{{
-  (dict 
-    (proc proc)
-    (printer printer)
-    (lines '())
-    (prompt_history (dict))
-    (exit_callback exit-callback)));}}}
+(defmacro gosh-repl-body (in-arguments?);{{{
+  (if in-arguments?
+    `(s+ " -e \"(begin " 
+         (enable-auto-use-exp)
+         " (include \\\"" gosh-repl-body-path "\\\") (exit))\"")
+    `(s+ "(begin " 
+         (enable-auto-use-exp)
+         " (include \"" gosh-repl-body-path "\") (exit))")));}}}
 
 (defmacro open-goshrepl body;{{{
   `(vimproc#popen2
@@ -48,26 +49,18 @@
          " -I" gosh-repl-directory "/gosh_repl/"
          ,@body)));}}}
 
-(defmacro gosh-repl-body ();{{{
-  `(s+ " -e \"(begin " (enable-auto-use-exp) " (include \\\"" gosh-repl-body-path "\\\") (exit))\""));}}}
+(defun open-gosh-proc ();{{{
+  (open-goshrepl (gosh-repl-body #t)));}}}
 
-(defmacro open-goshrepl-with-body ();{{{
-  `(open-goshrepl (gosh-repl-body)));}}}
-
-(defun gosh_repl#create_gosh_context (Printer . callback);{{{
-  (create-context (open-goshrepl-with-body)
-                  Printer
-                  (get-rest callback 0)));}}}
-
-(defun gosh_repl#create_gosh_context_with_buf (Printer bufnr . callback);{{{
-  (let ((proc (open-goshrepl))
-        (exception #f))
+(defun open-gosh-proc-with-buf (bufnr);{{{
+  (let ([proc (open-goshrepl)]
+        [exception #f])
     (try 
-      (begin
+      [begin
         (dolist [line (getbufline bufnr 1 "$")]
           ((ref proc 'stdin 'write) (s+ line "\n")))
         (sleep '100ms)
-        ((ref proc 'stdin 'write) (s+ (gosh-repl-body) "\n")))
+        ((ref proc 'stdin 'write) (s+ (gosh-repl-body #f) "\n"))]
       [else
         (set! exception #t)])
     (sleep '100ms)
@@ -75,71 +68,66 @@
             (not (ref proc 'stdin 'is_valid)) (ref proc 'stdin 'eof)
             (not (ref proc 'stdout 'is_valid)) (ref proc 'stdout 'eof))
       (set! exception #t))
-    (create-context
-      (if exception
-        (begin
-          (echo-err (join ((ref proc 'stdout 'read_lines)) "\n"))
-          (open-goshrepl-with-body))
-        proc)
-      Printer 
-      (get-rest callback 0))));}}}
+    (if exception
+      (begin
+        (echo-err (join ((ref proc 'stdout 'read_lines)) "\n"))
+        (open-gosh-proc))
+      proc)));}}}
 
-(defun gosh_repl#destry_gosh_context (context);{{{
-  ((ref context'proc'stdin'close))
-  ((ref context'proc'stdout'close))
-  (run-exit-callback context));}}}
+(defun buffer-open-cmd (direc conf);{{{
+  (if (=~# direc "^v")
+    (s+ g:gosh_buffer_width ":vs")
+    (s+ g:gosh_buffer_height ":sp")));}}}
 
-(defun run-exit-callback (context);{{{
-  (when (isnot (ref context 'exit_callback) 0)
-    ((ref context 'exit_callback) context)));}}}
+(defmacro gosh-config args;{{{
+  `(dict
+     (caption "gosh REPL")
+     (filetype "gosh-repl")
+     (syntax "gosh-repl")
+     (stdout-printer #f) ;default printer
+     (buffer-enter buffer-enter)
+     (buffer-leave buffer-leave)
+     ,@args
+     ));}}}
+        
+(defun gosh-repl#open-gosh-repl (:rest cmd);{{{
+  (ieie#open-interactive
+    (gosh-config
+      (buffer-open (pa$1 buffer-open-cmd (get-rest cmd g:gosh-buffer-direction)))
+      (proc open-gosh-proc)
+      )));}}}
 
-(defun gosh_repl#execute_line (context);{{{
-  (gosh_repl#execute_text 
-    context
-    (gosh_repl#get_line_text context (line "."))));}}}
+(defun gosh-repl#open-gosh-repl-with-buffer (:rest cmd);{{{
+  (ieie#open-interactive
+    (gosh-config
+      (buffer-open (pa$1 buffer-open-cmd (get-rest cmd g:gosh-buffer-direction)))
+      (always-new #t)
+      (proc (pa$0 open-gosh-proc-with-buf (bufnr "%")))
+      )));}}}
 
-(defun gosh_repl#get_line_text (context num-line);{{{
-  (subseq (getline num-line)
-          (length (gosh_repl#get_prompt context num-line))));}}}
+;
+;callback
 
-(defun gosh_repl#execute_text (context text);{{{
-  (if (or (not (ref context'proc'is_valid))
-        (not (ref context'proc'stdin'is_valid)) 
-        (ref context'proc'stdin'eof))
-    (run-exit-callback context)
-    (begin
-      (add (ref context'lines) text)
-      ((ref context'proc'stdin'write) 
-       (if (!~# text "\n$")
-         (s+ text "\n")
-         text)))));}}}
+(defvar b:lispwords "")
 
-(defun gosh_repl#check_output (context . timeout);{{{
-  (if (or (not (ref context'proc'is_valid))
-        (not (ref context'proc'stdout'is_valid))
-        (ref context'proc'stdout'eof))
-    (begin
-      (run-exit-callback context)
-      #f)
-    (let1 out (read-output context (get timeout 0 0))
-      (if (not (empty out))
-        (begin 
-          ((ref context 'printer) context out)
-          #t)
-        #f))));}}}
+(defun buffer-enter (ctx);{{{
+  (when (or (not (exists "b:lispwords")) (empty b:lispwords))
+    (set! b:lispwords &lispwords)
+    (set! &lispwords "lambda,and,or,if,cond,case,define,let,let*,letrec,begin,do,delay,set!,else,=>,quote,quasiquote,unquote,unquote-splicing,define-syntax,let-syntax,letrec-syntax,syntax-rules,%macroexpand,%macroexpand-1,and-let*,current-module,define-class,define-constant,define-generic,define-in-module,define-inline,define-macro,define-method,define-module,eval-when,export,export-all,extend,import,include,lazy,receive,require,select-module,unless,when,with-module,$,$*,$<<,$do,$do*,$lazy,$many-chars,$or,$satisfy,%do-ec,%ec-guarded-do-ec,%first-ec,%guard-rec,%replace-keywords,--,^,^*,^-generator,^.,^_,^a,^b,^c,^d,^e,^f,^g,^h,^i,^j,^k,^l,^m,^n,^o,^p,^q,^r,^s,^t,^u,^w,^v,^x,^y,^z,add-load-path,any?-ec,append-ec,apropos,assert,autoload,begin0,case-lambda,check-arg,cond-expand,cond-list,condition,cut,cute,debug-print,dec!,declare,define-^x,define-cgen-literal,define-cise-expr,define-cise-macro,define-cise-stmt,define-cise-toplevel,define-compiler-macro,define-condition-type,define-record-type,define-values,do-ec,do-ec:do,dolist,dotimes,ec-guarded-do-ec,ec-simplify,every?-ec,export-if-defined,first-ec,fluid-let,fold-ec,fold3-ec,get-keyword*,get-optional,guard,http-cond-receiver,if-let1,inc!,inline-stub,last-ec,let*-values,let-args,let-keywords,let-keywords*,let-optionals*,let-string-start+end,let-values,let/cc,let1,list-ec,make-option-parser,match,match-define,match-lambda,match-lambda*,match-let,match-let*,match-let1,match-letrec,max-ec,min-ec,parameterize,parse-options,pop!,product-ec,program,push!,rec,require-extension,reset,rlet1,rxmatch-case,rxmatch-cond,rxmatch-if,rxmatch-let,set!-values,shift,srfi-42-,srfi-42-char-range,srfi-42-dispatched,srfi-42-do,srfi-42-generator-proc,srfi-42-integers,srfi-42-let,srfi-42-list,srfi-42-parallel,srfi-42-parallel-1,srfi-42-port,srfi-42-range,srfi-42-real-range,srfi-42-string42-until-1,srfi-42-untilfi-42-vectorfi-42-while-1srfi-42-whilefi-42-while-2ax:make-parserssax:make-elem-parser,stream-cons,ssax:make-pi-parsertream-delay,string-append-ec,string-ec,sum-ec,sxml:find-name-separator,syntax-errorx-errorfime,test*,until,unwind-protect,update!,use,use-version,values-ref,vector-ec,vector-of-length-ec,while,with-builder,with-iteratorwith-signal-handlers,with-time-counter,xmac,xmac1")));}}}
 
-(defun read-output (context timeout);{{{
-  (let1 port (ref context 'proc 'stdout)
-    (let loop ((out "")
-               (res ((ref port 'read) -1 timeout)))
-      (if (empty res)
-        out
-        (loop (s+ out res)
-              ((ref port 'read) -1 15))))));}}}
+(defun buffer-leave (ctx);{{{
+  (when (and (exists "b:lispwords") (not (empty b:lispwords)))
+    (set! &lispwords b:lispwords)
+    (set! b:lispwords "")));}}}
 
-(defun gosh_repl#get_prompt (context line);{{{
-  (if (has_key context "prompt_history")
-    (get (ref context 'prompt_history) line "")
-    ""));}}}
+
+;
+;command
+
+(defun gosh-repl#send-text-block () :range;{{{
+  (ieie#send-text-block gosh-repl#open-gosh-repl "gosh-repl")) ;}}}
+
+(defun gosh-repl#send-text (text);{{{
+  (ieie#send-text gosh-repl#open-gosh-repl "gosh-repl" text)) ;}}}
 
 ; vim: foldmethod=marker commentstring=;%s

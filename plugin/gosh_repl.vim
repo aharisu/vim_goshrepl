@@ -32,9 +32,6 @@ let loaded_gosh_repl = 1
 let s:save_cpo = &cpo
 set cpo&vim
 
-let g:gosh_enable_ring_history = 
-      \ get(g:, 'gosh_enable_ring_history', 1)
-
 let g:gosh_enable_auto_use = 
       \ get(g:, 'gosh_enable_auto_use', 0)
 
@@ -51,19 +48,17 @@ let g:gosh_buffer_direction =
       \ get(g:, 'gosh_buffer_direction', 'h')
 
 
-command! -nargs=0 GoshREPL :call gosh_repl#ui#open_new_repl()
-command! -nargs=0 GoshREPLH :call gosh_repl#ui#open_new_repl('h')
-command! -nargs=0 GoshREPLV :call gosh_repl#ui#open_new_repl('v')
+command! -nargs=0 GoshREPL :call gosh_repl#open_gosh_repl()
+command! -nargs=0 GoshREPLH :call gosh_repl#open_gosh_repl('h')
+command! -nargs=0 GoshREPLV :call gosh_repl#open_gosh_repl('v')
 
-command! -nargs=0 GoshREPLWithBuffer :call gosh_repl#ui#open_new_repl_with_buffer()
-command! -nargs=0 GoshREPLWithBufferH :call gosh_repl#ui#open_new_repl_with_buffer('h')
-command! -nargs=0 GoshREPLWithBufferV :call gosh_repl#ui#open_new_repl_with_buffer('v')
+command! -nargs=0 GoshREPLWithBuffer :call gosh_repl#open_gosh_repl_with_buffer()
+command! -nargs=0 GoshREPLWithBufferH :call gosh_repl#open_gosh_repl_with_buffer('h')
+command! -nargs=0 GoshREPLWithBufferV :call gosh_repl#open_gosh_repl_with_buffer('v')
 
-command! -nargs=0 GoshREPLClear :call gosh_repl#ui#clear_buffer()
-command! -nargs=1 GoshREPLSend :call gosh_repl#ui#send_text(<q-args>)
-command! -nargs=0 GoshREPLLines :call gosh_repl#ui#show_all_line()
+command! -nargs=1 GoshREPLSend :call gosh_repl#send_text(<q-args>)
 
-vnoremap <silent> <Plug>(gosh_repl_send_block) :call gosh_repl#ui#send_text_block()<CR>
+vnoremap <silent> <Plug>(gosh_repl_send_block) :call gosh_repl#send_text_block()<CR>
 
 
 let &cpo = s:save_cpo

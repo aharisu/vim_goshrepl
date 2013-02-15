@@ -1,9 +1,9 @@
 .PHONY: all
 
 GOSH           = "gosh"
-GENVISE        = "/ram/gprog/vise/genvise.scm"
+GENVISE        = "/ram/gprog/vise/autoload/genvise.scm"
 
-VIMFILES = autoload/gosh_repl.vim autoload/gosh_repl/ui.vim autoload/gosh_repl/mapping.vim
+VIMFILES = autoload/gosh_repl.vim autoload/ieie.vim autoload/ieie_mapping.vim
 GENERATED = $(VIMFILES)
 
 #generate vise -> vim file
@@ -19,9 +19,9 @@ all : $(VIMFILES)
 
 autoload/gosh_repl.vim: autoload/gosh_repl.vise
 
-autoload/gosh_repl/ui.vim: autoload/gosh_repl/ui.vise
+autoload/ieie.vim: autoload/ieie.vise
 
-autoload/gosh_repl/mapping.vim: autoload/gosh_repl/mapping.vise
+autoload/ieie_mapping.vim: autoload/ieie_mapping.vise
 
 clean :
 	rm $(GENERATED)
