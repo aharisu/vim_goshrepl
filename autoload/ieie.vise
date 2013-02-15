@@ -1,0 +1,439 @@
+;=============================================================================
+; FILE: ieie.vise
+; AUTHOR:  aharisu <foo.yobina@gmail.com>
+; Last Modified: 15 Feb 2013.
+; License: MIT license;{{{
+;     Permission is hereby granted, free of charge, to any person obtaining
+;     a copy of this software and associated documentation files (the
+;     "Software"), to deal in the Software without restriction, including
+;     without limitation the rights to use, copy, modify, merge, publish,
+;     distribute, sublicense, and/or sell copies of the Software, and to
+;     permit persons to whom the Software is furnished to do so, subject to
+;     the following conditions:
+;
+;     The above copyright notice and this permission notice shall be included
+;     in all copies or substantial portions of the Software.
+;
+;     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+;     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+;     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+;     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+;     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+;     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.;}}}
+;=============================================================================
+
+(include "common-macro.vise")
+
+;(defvar conf 
+;  (dict
+;    (caption "vise REPL")
+;    (filetype "gosh-repl")
+;    (buffer-open "15:vs") ;text or funcref
+;    (proc "proc") ;text or funcref
+;    ;;callback
+;    (stdout-printer "stdout") ;funcref
+;    (stderr-printer "stderr") ;funcref
+;    (exit-callback "exit") ;funcref
+;    (buffer-enter "enter") ;funcref
+;    (buffer-leave "leave") ;funcref
+;    ;;optional
+;    (always-new #f or #t) ;default #f
+;    ))
+
+(defmacro get-def;{{{
+  (match
+    [(_ val slot) `(get ,val ,slot #f)]
+    [(_ val slot def) `(get ,val ,slot ,def)]));}}}
+
+(defvar str-type (type ""))
+
+(defun get-proc (conf);{{{
+  (if-let1 proc (get-def conf "proc")
+    (if (== (type proc) str-type)
+      (if (has_key conf "stderr-printer")
+        (vimproc#popen3 proc)
+        (vimproc#popen2 proc))
+      (proc))
+    #f)) ;error;}}}
+
+(defun get-filetype (conf);{{{
+  (get conf "filetype" "None"));}}}
+
+(defun get-caption (conf);{{{
+  (get conf "caption" "ieie"));}}}
+
+(defun get-buffer-open-cmd (conf);{{{
+  (let1 cmd (get conf "buffer-open" "15:sp")
+    (if (== (type cmd) str-type)
+      cmd
+      (cmd conf)))) ;}}}
+
+(defmacro get-printer (conf slot);{{{
+  `(if (has_key ,conf ,slot)
+     (if-let1 printer (ref ,conf ,slot)
+       printer
+       default-printer)
+     0));}}}
+
+(defmacro get-reader (conf slot);{{{
+  `(if (has_key ,conf ,slot)
+     (if (ref ,conf ,slot)
+       read-output-lines
+       read-output)
+     read-output));}}}
+
+(defun create-context (conf) ;{{{
+  (dict 
+    (proc (get-proc conf))
+    (stdout-printer (get-printer conf "stdout-printer"));(get-def conf "stdout-printer" default-printer))
+    (stderr-printer (get-printer conf "stderr-printer")); (get-def conf "stderr-printer" default-printer))
+    (exit-callback (get-def conf "exit-callback"))
+    (buffer-enter (get-def conf "buffer-enter"))
+    (buffer-leave (get-def conf "buffer-leave"))
+    (lines '())
+    (prompt-history (dict))
+    (stdout-remain "")
+    (stderr-reamin "")
+    (stdout-reader (get-reader conf "stdout-read-line?"))
+    (stderr-reader (get-reader conf "stderr-read-line?"))
+    ));}}}
+
+(defun destry-context (ctx);{{{
+  ((ref ctx'proc'stdin'close))
+  ((ref ctx'proc'stdout'close))
+  (run-exit-callback ctx));}}}
+
+(defun run-exit-callback (ctx);{{{
+  (buffer-leave)
+  (if-let1 exit (ref ctx'exit-callback)
+    (exit ctx))
+  (finalize-interactive ctx)) ;}}}
+
+(defun ieie#get-line-text (ctx num-line);{{{
+  (subseq (getline num-line)
+          (length (ieie#get-prompt ctx num-line))));}}}
+
+(defun ieie#execute-text (ctx text);{{{
+  (if (or (not (ref ctx'proc'is_valid))
+        (not (ref ctx'proc'stdin'is_valid)) 
+        (ref ctx'proc'stdin'eof))
+    (run-exit-callback ctx)
+    (begin
+      (add (ref ctx'lines) text)
+      ((ref ctx'proc'stdin'write) 
+       (if (!~# text "\n$")
+         (s+ text "\n")
+         text)))));}}}
+
+(defun ieie#check-output (ctx . timeout);{{{
+  (if (or (not (ref ctx'proc'is_valid))
+        (not (ref ctx'proc'stdout'is_valid))
+        (ref ctx'proc'stdout'eof))
+    (run-exit-callback ctx)
+    (let1 output? #f
+      ;;check standard error output
+      (when (isnot (ref ctx'stderr-printer) 0)
+        (let (([out remain] ((ref ctx'stderr-reader) (ref ctx'proc'stderr)
+                                                     (get-rest timeout 0)
+                                                     (ref ctx'stderr-remain))))
+          (ref-set! ctx'stderr-remain remain)
+          (unless (empty out)
+            ((ref ctx'stderr-printer) ctx out))))
+      ;;check standard output 
+      (when (isnot (ref ctx'stdout-printer) 0)
+        (let (([out remain] ((ref ctx'stdout-reader) (ref ctx'proc'stdout)
+                                                     (get-rest timeout 0)
+                                                     (ref ctx'stdout-remain))))
+          (ref-set! ctx'stdout-remain remain)
+          (unless (empty out)
+            (set! output? #t)
+            ((ref ctx'stdout-printer) ctx out))))
+      output?)));}}}
+
+(defun read-output (port timeout remain);{{{
+  (let loop ([out ""]
+             [res ((ref port 'read) -1 timeout)])
+    (if (empty res)
+      (array out remain)
+      (loop (s+ out res)
+            ((ref port 'read) -1 15)))));}}}
+
+(defun read-output-lines (port timeout remain);{{{
+  (let loop ([out ""]
+             [res (s+ remain ((ref port'read) -1 timeout))])
+    (if (empty res)
+      (let1 index (strridx out "\n")
+        (if (< index 0)
+          (array "" out)
+          (if (!= index 0)
+            (array (subseq out 0 (- index 1)) (subseq out (+ index 1)))
+            (array "" (subseq out (+ index 1))))))
+      (loop (s+ out res) ((ref port'read) 512 100)))));}}}
+
+(defun default-printer (ctx text);{{{
+  (when (empty text)
+    (return))
+  (switch-to-buffer
+    (ref ctx 'bufnr)
+    (let* ([col (col ".")]
+           [line (line ".")]
+           [cur-line-text (getline line)]
+           [text-list (split text "\n")]
+           [prompt ""])
+      (if (==# (ref text -1) "\n")
+        (add text-list cur-line-text)
+        (begin
+          (set! prompt (ref text-list -1))
+          (inc! col (len prompt))
+          (.= (ref text-list -1) cur-line-text)))
+      (dolist [text text-list]
+        (setline line text)
+        (inc! line))
+      (dec! line)
+      (unless (empty prompt)
+        (ieie#set-prompt ctx line prompt))
+      (cursor line col)
+      ;for screen update ...
+      (winline)))) ;}}}
+
+(defun ieie#get-prompt (ctx line);{{{
+  (if (has_key ctx "prompt-history")
+    (get (ref ctx 'prompt-history) line "")
+    ""));}}}
+
+(defun ieie#set-prompt (ctx line text);{{{
+  (if (has_key ctx "prompt-history")
+    (ref-set! ctx 'prompt-history line text)
+    ""));}}}
+
+
+;;
+;; ui
+
+(defvar context-list (dict))
+(defvar updatetime-save &updatetime)
+
+(defun ieie#get-context (bufnr);{{{
+  (get-def context-list bufnr));}}}
+
+(defun initialize-buffer (conf);{{{
+  (let* ([cap (s+ "[" (get-caption conf))]
+         [c (ieie#count-window "filetype" (get-filetype conf))])
+    (edit (qq= (s+ (if c (s+ "-" (+ c 1)) cap) "]")))
+    (setlocal 'buftype 'nofile 'noswapfile)
+    (setlocal 'bufhidden 'delete)
+    (setlocal 'nonumber)
+    (raw-vimscript "let &l:filetype=" (ref conf'filetype))
+    (raw-vimscript "let &l:syntax=" (ref conf'syntax))
+    (augroup ieie-plugin
+      (autocmd! '* '<buffer>)
+      (autocmd (BufUnload) <buffer> (unload-buffer))
+      (autocmd (BufEnter) <buffer> (buffer-enter))
+      (autocmd (BufLeave) <buffer> (buffer-leave))
+      (autocmd (CursorHold) <buffer> (cursor-hold "n"))
+      (autocmd (CursorHoldI) <buffer> (cursor-hold "i"))
+      (autocmd (CursorMoved) <buffer> (cursor-moved 0))
+      (autocmd (CursorMovedI) <buffer> (cursor-moved 0))
+      ))) ;}}}
+
+(defun initialize-context (bufnum ctx);{{{
+  (ref-set! ctx 'bufnr bufnum)
+  (ref-set! ctx 'input-history-index 0)
+  (ref-set! ctx 'is-buf-closed 0)
+  (ref-set! context-list bufnum ctx));}}}
+
+(defun create-buffer (conf);{{{
+  (let1 ctx (create-context conf)
+    (silent! 'execute (get-buffer-open-cmd conf))
+    (enew)
+    (initialize-buffer conf)
+    (ieie-mapping#initialize)
+    (let1 bufnum (bufnr "%")
+      (initialize-context bufnum ctx)
+      (buffer-enter)
+      (ieie#check-output ctx 250))));}}}
+
+(defun ieie#open-interactive (conf);{{{
+  (if (get-def conf "always-new" #f)
+    (create-buffer conf)
+    (if (ieie#move-to-window "filetype" (get-filetype conf))
+      (cursor (line "$") (col "$"))
+      (create-buffer conf)))
+  (startinsert!));}}}
+
+(defun finalize-interactive (ctx);{{{
+  (unless (ref ctx 'is-buf-closed)
+    (execute (ref ctx 'bufnr) "wincmd q"))
+  (unlet (ref context-list (ref ctx 'bufnr))));}}}
+
+;;
+;; buffer autocmd functions
+
+(defun unload-buffer ();{{{
+  (if-let1 ctx (get-def context-list (bufnr "%"))
+    (begin
+      (ref-set! ctx 'is-buf-closed 1)
+      (destry-context ctx))));}}}
+
+(defun cursor-hold (mode);{{{
+  (cursor-moved 0)
+  (cond
+    [(==# mode "n") (feedkeys (key-str "g\\<ESC>") "n")]
+    [(==# mode "i") (feedkeys (key-str "a\\<BS>") "n")]));}}}
+
+(defun cursor-moved (timeout);{{{
+  (dolist [ctx (values context-list)]
+    (ieie#check-output ctx timeout)));}}}
+
+(defun buffer-enter ();{{{
+  (save-updatetime)
+  (if-let1 ctx (get-def context-list (bufnr "%"))
+    (if-let1 enter (ref ctx'buffer-enter)
+      (enter ctx)))) ;}}}
+
+(defun buffer-leave ();{{{
+  (restore-updatetime)
+  (if-let1 ctx (get-def context-list (bufnr "%"))
+    (if-let1 leave (ref ctx'buffer-leave)
+      (leave ctx)))) ;}}}
+
+(defun save-updatetime ();{{{
+  (set! updatetime-save &updatetime)
+  (when (> &updatetime g:gosh-updatetime)
+    (set! &updatetime g:gosh-updatetime)))
+  ;(when (> &updatetime g:ieie-updatetime)
+  ;  (set! &updatetime g:ieie-updatetime)));}}}
+
+(defun restore-updatetime ();{{{
+  (when (< &updatetime updatetime-save)
+    (set! &updatetime updatetime-save)));}}}
+
+;;
+;; command
+
+(defun ieie#execute (text bufnum is-insert);{{{
+  (let1 ctx (ieie#get-context bufnum)
+    (switch-to-buffer
+      (bufnr "%")
+      (begin
+        (ieie#execute-text ctx text)
+        (execute ":$ normal o")
+        (let1 l (line ".")
+          (setline l (s+ (repeat " " (lispindent l)) (getline l))))
+        (ref-set! ctx 'input-history-index 0)))
+    (when (and is-insert (not (exists "changebuf"))) ;declare changebuf in switch-to-buffer
+      (startinsert!))
+    (ieie#check-output ctx 100)));}}}
+
+(defun line-split (text-block);{{{
+  (map
+    (lambda (line) (substitute line "^[	 ]*" "" ""))
+    (split text-block "\n")));}}}
+
+(defun get-visual-block ();{{{
+  (let1 tmp @@
+    (silent 'normal 'gvy)
+    (begin0 @@
+            (set! @@ tmp))));}}}
+
+(defun ieie#send_text_block (opener ft) :range;{{{
+  (let ([v (visualmode)]
+        [selected (get-visual-block)]
+        [text ""])
+    (if (and (==# &filetype ft) (==# v "v") (==# v "V"))
+      (let* ([bufnum (bufnr "%")]
+             [ctx (ieie#get-context bufnum)]
+             [line a:firstline])
+        (dolist [line-text (line-split selected)]
+          ;chomp prompt
+          (let1 prompt (ieie#get-prompt ctx line)
+            (when (=~# line-text (s+ "^" prompt))
+              (set! line-text (subseq line-text (len prompt)))))
+          (.= text " " line-text)
+          (inc! line)))
+      (set! text (join (line-split selected) " ")))
+    (ieie#send-text opener ft text)));}}}
+
+(defun ieie#send-text (opener ft text);{{{
+  (let ([mode (mode)]
+        [filetype &filetype])
+    (when (!=# filetype ft)
+      (ieie#mark-back-to-window "_send_text")
+      (opener))
+    (let1 bufnum (bufnr "%")
+      (unless (ieie#execute text bufnum 0)
+        (ieie#check_output (ieie#get-context bufnum) 1000)))
+    (when (!=# filetype ft)
+      (ieie#back-to-marked-window "_send_text"))
+    (when (==# mode "n")
+      (stopinsert))));}}}
+
+;
+;buffer & window operation
+
+(defmacro winbuf-for-each (winnum-sym bufnum-sym . body);{{{
+  `(dolist [,winnum-sym (range 0 (winnr "$"))]
+     (let1 ,bufnum-sym (winbufnr ,winnum-sym)
+       ,@body)));}}}
+
+(defun ieie#count-window (kind val) ;{{{
+  (rlet1 c 0
+    (winbuf-for-each 
+      i n
+      (cond
+        [(==# kind "filetype")
+         (when (==# (getbufvar n "&filetype") val)
+           (inc! c))]
+        [(==# kind "let")
+         (when (getbufvar n val)
+           (inc! c))])))) ;}}}
+
+(defun ieie#move-to-buffer (bufnum);{{{
+  (winbuf-for-each 
+    i n
+    (when (== bufnum n)
+      (when (!= i 0)
+        (execute i "wincmd w"))
+      (return n)))
+  #f) ;}}}
+
+(defun ieie#move-to-window (kind val);{{{
+  (winbuf-for-each 
+    i n
+    (when (cond
+            [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
+            [(==# kind "let") (getbufvar n val)]
+            [else 0])
+      (when (!= i 0)
+        (execute i "wincmd w"))
+      (return n)))
+  #f);}}}
+
+(defun ieie#find-buffer (kind val);{{{
+  (winbuf-for-each 
+    i n
+    (when (cond
+            [(==# kind "filetype") (==# (getbufvar n "&filetype") val)]
+            [(==# kind "let") (getbufvar n val)]
+            [else 0])
+      (return n)))
+  #f);}}}
+
+(defun ieie#mark-back-to-window (:rest mark) ;{{{
+  (execute (s+ "let w:" (get mark 0 "_ref_back") " = 1"))) ;}}}
+
+(defun ieie#unmark-back-to-window ();{{{
+  (unlet! w:_ref_back));}}}
+
+(defun ieie#back-to-marked-window (:rest mark);{{{
+  (let1 mark (get mark 0 "_ref_back")
+    (dolist [t (range 1 (tabpagenr "$"))]
+      (dolist [w (range 1 (winnr "$"))]
+        (when (gettabwinvar t w mark)
+          (execute "tabnext" t)
+          (execute w "wincmd w")
+          (execute (s+ "unlet! w:" mark)))))));}}}
+
+
+; vim: foldmethod=marker commentstring=;%s
