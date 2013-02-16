@@ -171,6 +171,18 @@
             (array "" (subseq out (+ index 1))))))
       (loop (s+ out res) ((ref port'read) 512 100)))));}}}
 
+(defun get-user-input-text&output-text-list (ctx line text);{{{
+  (let* ([prompt (ieie#get-prompt ctx line)]
+         [line-text (getline line)]
+         [user-input-text (subseq line-text (+ (stridx line-text prompt)
+                                               (len prompt)))]
+         [text-list (split text "\n")])
+    (unless (empty prompt)
+      (if (zero? (len text-list))
+        (add text-list prompt)
+        (ref-set! text-list 0 (s+ prompt (ref text-list 0)))))
+    (array user-input-text text-list)));}}}
+
 (defun default-printer (ctx text);{{{
   (when (empty text)
     (return))
@@ -178,15 +190,15 @@
     (ref ctx 'bufnr)
     (let* ([col (col ".")]
            [line (line ".")]
-           [cur-line-text (getline line)]
-           [text-list (split text "\n")]
+           [(user-input-text text-list)
+            (get-user-input-text&output-text-list ctx line text)]
            [prompt ""])
       (if (==# (ref text -1) "\n")
-        (add text-list cur-line-text)
+        (add text-list user-input-text)
         (begin
           (set! prompt (ref text-list -1))
           (inc! col (len prompt))
-          (.= (ref text-list -1) cur-line-text)))
+          (.= (ref text-list -1) user-input-text)))
       (dolist [text text-list]
         (setline line text)
         (inc! line))
