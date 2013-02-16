@@ -82,8 +82,8 @@
 (defmacro gosh-config args;{{{
   `(dict
      (caption "gosh REPL")
+     (mark "ieie_gosh_repl")
      (filetype "gosh-repl")
-     (syntax "gosh-repl")
      (buffer-enter buffer-enter)
      (buffer-leave buffer-leave)
      ,@args
@@ -124,9 +124,9 @@
 ;command
 
 (defun gosh-repl#send-text-block () :range;{{{
-  (ieie#send-text-block gosh-repl#open-gosh-repl "gosh-repl")) ;}}}
+  (ieie#send-text-block gosh-repl#open-gosh-repl "ieie_gosh_repl")) ;}}}
 
 (defun gosh-repl#send-text (text);{{{
-  (ieie#send-text gosh-repl#open-gosh-repl "gosh-repl" text)) ;}}}
+  (ieie#send-text gosh-repl#open-gosh-repl "ieie_gosh_repl" text)) ;}}}
 
 ; vim: foldmethod=marker commentstring=;%s

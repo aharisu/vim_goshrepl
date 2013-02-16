@@ -28,7 +28,9 @@
 ;(defvar conf 
 ;  (dict
 ;    (caption "vise REPL")
+;    (mark "gosh_repl")
 ;    (filetype "gosh-repl")
+;    (syntax "gosh-repl")
 ;    (buffer-open "15:vs") ;text or funcref
 ;    (proc "proc") ;text or funcref
 ;    ;;callback
@@ -60,8 +62,25 @@
 (defun get-filetype (conf);{{{
   (get conf "filetype" "None"));}}}
 
+(defun get-syntax (conf);{{{
+  (if (has_key conf "syntax")
+    (ref conf "syntax")
+    (get-filetype conf)));}}}
+
 (defun get-caption (conf);{{{
   (get conf "caption" "ieie"));}}}
+
+(defmacro replace-all (str . ch-list);{{{
+  (let loop ([str str]
+             [ch-list ch-list])
+    (if (null? ch-list)
+      str
+      (loop `(substitute ,str ,(car ch-list) "_" "g") (cdr ch-list)))));}}}
+
+(defun get-mark (conf);{{{
+  (if (has_key conf "mark")
+    (ref conf "mark")
+    (replace-all (get-caption conf) " " "-")));}}}
 
 (defun get-buffer-open-cmd (conf);{{{
   (let1 cmd (get conf "buffer-open" "15:sp")
@@ -231,13 +250,14 @@
 
 (defun initialize-buffer (conf);{{{
   (let* ([cap (s+ "[" (get-caption conf))]
-         [c (ieie#count-window "filetype" (get-filetype conf))])
+         [c (ieie#count-window "let" (get-mark conf))])
     (edit (qq= (s+ (if c (s+ "-" (+ c 1)) cap) "]")))
     (setlocal 'buftype 'nofile 'noswapfile)
     (setlocal 'bufhidden 'delete)
     (setlocal 'nonumber)
-    (raw-vimscript "let &l:filetype=" (ref conf'filetype))
-    (raw-vimscript "let &l:syntax=" (ref conf'syntax))
+    (raw-vimscript "let &l:filetype=" (get-filetype conf))
+    (raw-vimscript "let &l:syntax=" (get-syntax conf))
+    (execute (s+ "let b:" (get-mark conf) " = 1"))
     (augroup ieie-plugin
       (autocmd! '* '<buffer>)
       (autocmd (BufUnload) <buffer> (unload-buffer))
@@ -269,7 +289,7 @@
 (defun ieie#open-interactive (conf);{{{
   (if (get-def conf "always-new" #f)
     (create-buffer conf)
-    (if (ieie#move-to-window "filetype" (get-filetype conf))
+    (if (ieie#move-to-window "let" (get-mark conf))
       (cursor (line "$") (col "$"))
       (create-buffer conf)))
   (startinsert!));}}}
@@ -347,13 +367,13 @@
     (begin0 @@
             (set! @@ tmp))));}}}
 
-(defun ieie#send_text_block (opener ft) :range;{{{
+(defun ieie#send_text_block (opener mark) :range;{{{
   (let ([v (visualmode)]
         [selected (get-visual-block)]
-        [text ""])
-    (if (and (==# &filetype ft) (==# v "v") (==# v "V"))
-      (let* ([bufnum (bufnr "%")]
-             [ctx (ieie#get-context bufnum)]
+        [text ""]
+        [bufnum (bufnr "%")])
+    (if (and (isnot "" (getbufvar bufnum mark)) (==# v "v") (==# v "V"))
+      (let* ([ctx (ieie#get-context bufnum)]
              [line a:firstline])
         (dolist [line-text (line-split selected)]
           ;chomp prompt
@@ -363,18 +383,18 @@
           (.= text " " line-text)
           (inc! line)))
       (set! text (join (line-split selected) " ")))
-    (ieie#send-text opener ft text)));}}}
+    (ieie#send-text opener mark text)));}}}
 
-(defun ieie#send-text (opener ft text);{{{
+(defun ieie#send-text (opener mark text);{{{
   (let ([mode (mode)]
-        [filetype &filetype])
-    (when (!=# filetype ft)
+        [bufnum (bufnr "%")])
+    (when (is "" (getbufvar bufnum mark))
       (ieie#mark-back-to-window "_send_text")
       (opener))
     (let1 bufnum (bufnr "%")
       (unless (ieie#execute text bufnum 0)
         (ieie#check_output (ieie#get-context bufnum) 1000)))
-    (when (!=# filetype ft)
+    (when (is "" (getbufvar bufnum mark))
       (ieie#back-to-marked-window "_send_text"))
     (when (==# mode "n")
       (stopinsert))));}}}
