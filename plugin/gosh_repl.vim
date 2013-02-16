@@ -48,17 +48,19 @@ let g:gosh_buffer_direction =
       \ get(g:, 'gosh_buffer_direction', 'h')
 
 
-command! -nargs=0 GoshREPL :call gosh_repl#open_gosh_repl()
-command! -nargs=0 GoshREPLH :call gosh_repl#open_gosh_repl('h')
-command! -nargs=0 GoshREPLV :call gosh_repl#open_gosh_repl('v')
+if executable("gosh")
+  command! -nargs=0 GoshREPL :call gosh_repl#open_gosh_repl()
+  command! -nargs=0 GoshREPLH :call gosh_repl#open_gosh_repl('h')
+  command! -nargs=0 GoshREPLV :call gosh_repl#open_gosh_repl('v')
 
-command! -nargs=0 GoshREPLWithBuffer :call gosh_repl#open_gosh_repl_with_buffer()
-command! -nargs=0 GoshREPLWithBufferH :call gosh_repl#open_gosh_repl_with_buffer('h')
-command! -nargs=0 GoshREPLWithBufferV :call gosh_repl#open_gosh_repl_with_buffer('v')
+  command! -nargs=0 GoshREPLWithBuffer :call gosh_repl#open_gosh_repl_with_buffer()
+  command! -nargs=0 GoshREPLWithBufferH :call gosh_repl#open_gosh_repl_with_buffer('h')
+  command! -nargs=0 GoshREPLWithBufferV :call gosh_repl#open_gosh_repl_with_buffer('v')
 
-command! -nargs=1 GoshREPLSend :call gosh_repl#send_text(<q-args>)
+  command! -nargs=1 GoshREPLSend :call gosh_repl#send_text(<q-args>)
 
-vnoremap <silent> <Plug>(gosh_repl_send_block) :call gosh_repl#send_text_block()<CR>
+  vnoremap <silent> <Plug>(gosh_repl_send_block) :call gosh_repl#send_text_block()<CR>
+endif
 
 
 let &cpo = s:save_cpo
