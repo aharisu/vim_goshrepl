@@ -13,7 +13,13 @@ function! s:get_proc(conf)
   if Proc_482 isnot 0
     if (type(Proc_482)) == s:str_type
       if has_key(a:conf,"stderr-printer")
-        return vimproc#popen3(Proc_482)
+        if get(a:conf,"pty",0)
+          return vimproc#ptyopen(Proc_482,3)
+        else
+          return vimproc#popen3(Proc_482)
+        endif
+      elseif get(a:conf,"pty",0)
+        return vimproc#ptyopen(Proc_482,2)
       else
         return vimproc#popen2(Proc_482)
       endif
@@ -59,7 +65,7 @@ function! s:get_buffer_open_cmd(conf)
 endfunction
 
 function! s:create_context(conf)
-  return {'proc' : s:get_proc(a:conf),'stdout-printer' : get(a:conf,"stdout-printer",function(s:SID_PREFIX_485() . 'default_printer')),'stderr-printer' : ((has_key(a:conf,"stderr-printer"))?(((a:conf["stderr-printer"] isnot 0)?a:conf["stderr-printer"] : function(s:SID_PREFIX_485() . 'default_printer'))) : 0),'exit-callback' : get(a:conf,"exit-callback",0),'buffer-enter' : get(a:conf,"buffer-enter",0),'buffer-leave' : get(a:conf,"buffer-leave",0),'lines' : [],'prompt-history' : {},'stdout-remain' : "",'stderr-reamin' : "",'stdout-reader' : ((has_key(a:conf,"stdout-read-line?"))?(((a:conf["stdout-read-line?"])?function(s:SID_PREFIX_485() . 'read_output_lines') : function(s:SID_PREFIX_485() . 'read_output'))) : function(s:SID_PREFIX_485() . 'read_output')),'stderr-reader' : ((has_key(a:conf,"stderr-read-line?"))?(((a:conf["stderr-read-line?"])?function(s:SID_PREFIX_485() . 'read_output_lines') : function(s:SID_PREFIX_485() . 'read_output'))) : function(s:SID_PREFIX_485() . 'read_output'))}
+  return {'proc' : s:get_proc(a:conf),'pty' : get(a:conf,"pty",0),'stdout-printer' : get(a:conf,"stdout-printer",function(s:SID_PREFIX_485() . 'default_printer')),'stderr-printer' : ((has_key(a:conf,"stderr-printer"))?(((a:conf["stderr-printer"] isnot 0)?a:conf["stderr-printer"] : function(s:SID_PREFIX_485() . 'default_printer'))) : 0),'exit-callback' : get(a:conf,"exit-callback",0),'buffer-enter' : get(a:conf,"buffer-enter",0),'buffer-leave' : get(a:conf,"buffer-leave",0),'lines' : [],'prompt-history' : {},'stdout-remain' : "",'stderr-reamin' : "",'stdout-reader' : ((has_key(a:conf,"stdout-read-line?"))?(((a:conf["stdout-read-line?"])?function(s:SID_PREFIX_485() . 'read_output_lines') : function(s:SID_PREFIX_485() . 'read_output'))) : function(s:SID_PREFIX_485() . 'read_output')),'stderr-reader' : ((has_key(a:conf,"stderr-read-line?"))?(((a:conf["stderr-read-line?"])?function(s:SID_PREFIX_485() . 'read_output_lines') : function(s:SID_PREFIX_485() . 'read_output'))) : function(s:SID_PREFIX_485() . 'read_output'))}
 endfunction
 
 function! s:destry_context(ctx)
@@ -138,12 +144,12 @@ endfunction
 
 function! s:read_output(port,timeout,remain)
   let out_494 = ""
-  let res_495 = (type(a:port["read"])==s:dict_type_483) ? a:port["read"].func(-1,a:timeout) : a:port["read"](-1,a:timeout)
+  let res_495 = a:remain . ((type(a:port["read"])==s:dict_type_483) ? a:port["read"].func(-1,a:timeout) : a:port["read"](-1,a:timeout))
   let recursion_496 = 1
   while recursion_496
     let recursion_496 = 0
     if empty(res_495)
-      return [out_494,a:remain]
+      return [out_494,""]
     else
       let recursion_496 = 1
       let out_494 = out_494 . res_495
@@ -175,53 +181,68 @@ function! s:read_output_lines(port,timeout,remain)
   endwhile
 endfunction
 
+function! s:get_newline_mark(text)
+  let idx_501 = stridx(a:text,"\r")
+  if -1 == idx_501
+    return "\n"
+  elseif a:text[idx_501 + 1] == "\n"
+    return "\r\n"
+  else
+    return "\r"
+  endif
+endfunction
+
+function! s:line_split(text)
+  return split(a:text,s:get_newline_mark(a:text))
+endfunction
+
 function! s:get_user_input_text_26output_text_list(ctx,line,text)
-  let prompt_501 = ieie#get_prompt(a:ctx,a:line)
-  let line_text_502 = getline(a:line)
-  let user_input_text_503 = line_text_502[(stridx(line_text_502,prompt_501)) + (len(prompt_501)):]
-  let text_list_504 = split(a:text,"\n")
-  if !(empty(prompt_501))
-    if 0 == (len(text_list_504))
-      call add(text_list_504,prompt_501)
+  let prompt_502 = ieie#get_prompt(a:ctx,a:line)
+  let line_text_503 = getline(a:line)
+  let user_input_text_504 = line_text_503[(stridx(line_text_503,prompt_502)) + (len(prompt_502)):]
+  let text_list_505 = s:line_split(a:text)
+  if !(empty(prompt_502))
+    if 0 == (len(text_list_505))
+      call add(text_list_505,prompt_502)
     else
-      let text_list_504[0] = prompt_501 . text_list_504[0]
+      let text_list_505[0] = prompt_502 . text_list_505[0]
     endif
   endif
-  return [user_input_text_503,text_list_504]
+  return [user_input_text_504,text_list_505]
 endfunction
 
 function! s:default_printer(ctx,text)
   if empty(a:text)
     return
   endif
-  let bufnum_505 = bufnr("%")
-  if bufnum_505 != a:ctx["bufnr"]
+  let bufnum_506 = bufnr("%")
+  if bufnum_506 != a:ctx["bufnr"]
     let l:changebuf = 1
     call ieie#mark_back_to_window("switch477")
     call ieie#move_to_buffer(a:ctx["bufnr"])
   endif
-  let col_506 = col(".")
-  let line_507 = line(".")
-  let [user_input_text_508,text_list_509] = s:get_user_input_text_26output_text_list(a:ctx,line_507,a:text)
-  let prompt_510 = ""
+  let col_507 = col(".")
+  let line_508 = line(".")
+  let [user_input_text_509,text_list_510] = s:get_user_input_text_26output_text_list(a:ctx,line_508,a:text)
+  let prompt_511 = ""
   if a:text[-1] ==# "\n"
-    call add(text_list_509,user_input_text_508)
+    call add(text_list_510,user_input_text_509)
   else
-    let prompt_510 = text_list_509[-1]
-    let col_506 += (len(prompt_510))
-    let text_list_509[-1] .= user_input_text_508
+    let prompt_511 = text_list_510[-1]
+    let col_507 += (len(prompt_511))
+    let text_list_510[-1] .= user_input_text_509
   endif
-  for text_511 in text_list_509
-    call setline(line_507,text_511)
-    let line_507 += 1
+  for text_512 in text_list_510
+    call setline(line_508,text_512)
+    let line_508 += 1
   endfor
-  let line_507 -= 1
-  if !(empty(prompt_510))
-    call ieie#set_prompt(a:ctx,line_507,prompt_510)
+  let line_508 -= 1
+  if !(empty(prompt_511))
+    call ieie#set_prompt(a:ctx,line_508,prompt_511)
   endif
-  call cursor(line_507,col_506)
+  call cursor(line_508,col_507)
   call winline()
-  if bufnum_505 != a:ctx["bufnr"]
+  if bufnum_506 != a:ctx["bufnr"]
     return ieie#back_to_marked_window("switch477")
   endif
 endfunction
@@ -251,9 +272,9 @@ function! ieie#get_context(bufnr)
 endfunction
 
 function! s:initialize_buffer(conf)
-  let cap_512 = "[" . (s:get_caption(a:conf))
-  let c_513 = ieie#count_window("let",s:get_mark(a:conf))
-  edit `=(((c_513)?"-" . (c_513 + 1) : cap_512)) . "]"`
+  let cap_513 = "[" . (s:get_caption(a:conf))
+  let c_514 = ieie#count_window("let",s:get_mark(a:conf))
+  edit `=(((c_514)?"-" . (c_514 + 1) : cap_513)) . "]"`
   setlocal buftype=nofile noswapfile
   setlocal bufhidden=delete
   setlocal nonumber
@@ -280,15 +301,15 @@ function! s:initialize_context(bufnum,ctx)
 endfunction
 
 function! s:create_buffer(conf)
-  let ctx_514 = s:create_context(a:conf)
+  let ctx_515 = s:create_context(a:conf)
   silent! execute s:get_buffer_open_cmd(a:conf)
   enew
   call s:initialize_buffer(a:conf)
   call ieie_mapping#initialize()
-  let bufnum_515 = bufnr("%")
-  call s:initialize_context(bufnum_515,ctx_514)
+  let bufnum_516 = bufnr("%")
+  call s:initialize_context(bufnum_516,ctx_515)
   call s:buffer_enter()
-  return ieie#check_output(ctx_514,250)
+  return ieie#check_output(ctx_515,250)
 endfunction
 
 function! ieie#open_interactive(conf)
@@ -310,10 +331,10 @@ function! s:finalize_interactive(ctx)
 endfunction
 
 function! s:unload_buffer()
-  let ctx_516 = get(s:context_list,bufnr("%"),0)
-  if ctx_516 isnot 0
-    let ctx_516["is-buf-closed"] = 1
-    return s:destry_context(ctx_516)
+  let ctx_517 = get(s:context_list,bufnr("%"),0)
+  if ctx_517 isnot 0
+    let ctx_517["is-buf-closed"] = 1
+    return s:destry_context(ctx_517)
   endif
 endfunction
 
@@ -327,29 +348,29 @@ function! s:cursor_hold(mode)
 endfunction
 
 function! s:cursor_moved(timeout)
-  for ctx_517 in values(s:context_list)
-    call ieie#check_output(ctx_517,a:timeout)
+  for ctx_518 in values(s:context_list)
+    call ieie#check_output(ctx_518,a:timeout)
   endfor
 endfunction
 
 function! s:buffer_enter()
   call s:save_updatetime()
-  let ctx_518 = get(s:context_list,bufnr("%"),0)
-  if ctx_518 isnot 0
-    let Enter_519 = ctx_518["buffer-enter"]
-    if Enter_519 isnot 0
-      return (type(Enter_519)==s:dict_type_483) ? Enter_519.func(ctx_518) : Enter_519(ctx_518)
+  let ctx_519 = get(s:context_list,bufnr("%"),0)
+  if ctx_519 isnot 0
+    let Enter_520 = ctx_519["buffer-enter"]
+    if Enter_520 isnot 0
+      return (type(Enter_520)==s:dict_type_483) ? Enter_520.func(ctx_519) : Enter_520(ctx_519)
     endif
   endif
 endfunction
 
 function! s:buffer_leave()
   call s:restore_updatetime()
-  let ctx_520 = get(s:context_list,bufnr("%"),0)
-  if ctx_520 isnot 0
-    let Leave_521 = ctx_520["buffer-leave"]
-    if Leave_521 isnot 0
-      return (type(Leave_521)==s:dict_type_483) ? Leave_521.func(ctx_520) : Leave_521(ctx_520)
+  let ctx_521 = get(s:context_list,bufnr("%"),0)
+  if ctx_521 isnot 0
+    let Leave_522 = ctx_521["buffer-leave"]
+    if Leave_522 isnot 0
+      return (type(Leave_522)==s:dict_type_483) ? Leave_522.func(ctx_521) : Leave_522(ctx_521)
     endif
   endif
 endfunction
@@ -367,66 +388,78 @@ function! s:restore_updatetime()
   endif
 endfunction
 
+function! s:discard_line(ctx)
+  if a:ctx["proc"]["is_valid"] && a:ctx["proc"]["stdout"]["is_valid"] && (!a:ctx["proc"]["stdout"]["eof"])
+    let out_523 = (type(a:ctx["proc"]["stdout"]["read"])==s:dict_type_483) ? a:ctx["proc"]["stdout"]["read"].func(-1,250) : a:ctx["proc"]["stdout"]["read"](-1,250)
+    let newline_524 = s:get_newline_mark(out_523)
+    let lines_525 = split(out_523,newline_524,1)
+    let a:ctx["stdout-remain"] .= (join(lines_525[1:],newline_524))
+  endif
+endfunction
+
 function! ieie#execute(text,bufnum,is_insert)
-  let ctx_522 = ieie#get_context(a:bufnum)
-  let bufnum_523 = bufnr("%")
-  if bufnum_523 != (bufnr("%"))
+  let ctx_526 = ieie#get_context(a:bufnum)
+  let bufnum_527 = bufnr("%")
+  if bufnum_527 != (bufnr("%"))
     let l:changebuf = 1
     call ieie#mark_back_to_window("switch478")
     call ieie#move_to_buffer(bufnr("%"))
   endif
-  call ieie#execute_text(ctx_522,a:text)
+  call ieie#execute_text(ctx_526,a:text)
   execute ":$ normal o"
-  let l_524 = line(".")
-  call setline(l_524,(repeat(" ",lispindent(l_524))) . (getline(l_524)))
-  let ctx_522["input-history-index"] = 0
-  if bufnum_523 != (bufnr("%"))
+  let l_528 = line(".")
+  call setline(l_528,(repeat(" ",lispindent(l_528))) . (getline(l_528)))
+  let ctx_526["input-history-index"] = 0
+  if bufnum_527 != (bufnr("%"))
     call ieie#back_to_marked_window("switch478")
   endif
   if a:is_insert && (!(exists("changebuf")))
     startinsert!
   endif
-  return ieie#check_output(ctx_522,100)
+  if ctx_526["pty"]
+    call s:discard_line(ctx_526)
+  endif
+  return ieie#check_output(ctx_526,100)
 endfunction
 
-function! s:line_split(text_block)
+function! s:block_split(text_block)
   return map(copy(split(a:text_block,"\n")),'substitute(v:val,"^[\t ]*","","")')
 endfunction
 
 function! s:get_visual_block()
-  let tmp_525 = @@
+  let tmp_529 = @@
   silent normal gvy
-  let temp479_526 = @@
-  let @@ = tmp_525
-  return temp479_526
+  let temp479_530 = @@
+  let @@ = tmp_529
+  return temp479_530
 endfunction
 
 function! ieie#send_text_block(opener,mark)range
-  let v_527 = visualmode()
-  let selected_528 = s:get_visual_block()
-  let text_529 = ""
-  let bufnum_530 = bufnr("%")
-  if ("" isnot (getbufvar(bufnum_530,a:mark))) && (v_527 ==# "v") && (v_527 ==# "V")
-    let ctx_531 = ieie#get_context(bufnum_530)
-    let line_532 = a:firstline
-    for line_text_533 in s:line_split(selected_528)
-      let prompt_534 = ieie#get_prompt(ctx_531,line_532)
-      if line_text_533 =~# "^" . prompt_534
-        let line_text_533 = line_text_533[len(prompt_534):]
+  let v_531 = visualmode()
+  let selected_532 = s:get_visual_block()
+  let text_533 = ""
+  let bufnum_534 = bufnr("%")
+  if ("" isnot (getbufvar(bufnum_534,a:mark))) && (v_531 ==# "v") && (v_531 ==# "V")
+    let ctx_535 = ieie#get_context(bufnum_534)
+    let line_536 = a:firstline
+    for line_text_537 in s:block_split(selected_532)
+      let prompt_538 = ieie#get_prompt(ctx_535,line_536)
+      if line_text_537 =~# "^" . prompt_538
+        let line_text_537 = line_text_537[len(prompt_538):]
       endif
-      let text_529 .= " " . line_text_533
-      let line_532 += 1
+      let text_533 .= " " . line_text_537
+      let line_536 += 1
     endfor
   else
-    let text_529 = join(s:line_split(selected_528)," ")
+    let text_533 = join(s:block_split(selected_532)," ")
   endif
-  return ieie#send_text(a:opener,a:mark,text_529)
+  return ieie#send_text(a:opener,a:mark,text_533)
 endfunction
 
 function! ieie#send_text(Opener,mark,text)
-  let mode_535 = mode()
-  let bufnum_536 = bufnr("%")
-  if "" is (getbufvar(bufnum_536,a:mark))
+  let mode_539 = mode()
+  let bufnum_540 = bufnr("%")
+  if "" is (getbufvar(bufnum_540,a:mark))
     call ieie#mark_back_to_window("_send_text")
     if (type(a:Opener)==s:dict_type_483)
       call a:Opener.func()
@@ -434,66 +467,66 @@ function! ieie#send_text(Opener,mark,text)
       call a:Opener()
     endif
   endif
-  let bufnum_537 = bufnr("%")
-  if !(ieie#execute(a:text,bufnum_537,0))
-    call ieie#check_output(ieie#get_context(bufnum_537),1000)
+  let bufnum_541 = bufnr("%")
+  if !(ieie#execute(a:text,bufnum_541,0))
+    call ieie#check_output(ieie#get_context(bufnum_541),1000)
   endif
-  if "" is (getbufvar(bufnum_536,a:mark))
+  if "" is (getbufvar(bufnum_540,a:mark))
     call ieie#back_to_marked_window("_send_text")
   endif
-  if mode_535 ==# "n"
+  if mode_539 ==# "n"
     stopinsert
   endif
 endfunction
 
 function! ieie#count_window(kind,val)
-  let c_538 = 0
-  for i_539 in range(0,winnr("$"))
-    let n_540 = winbufnr(i_539)
+  let c_542 = 0
+  for i_543 in range(0,winnr("$"))
+    let n_544 = winbufnr(i_543)
     if a:kind ==# "filetype"
-      if (getbufvar(n_540,"&filetype")) ==# a:val
-        let c_538 += 1
+      if (getbufvar(n_544,"&filetype")) ==# a:val
+        let c_542 += 1
       endif
     elseif a:kind ==# "let"
-      if getbufvar(n_540,a:val)
-        let c_538 += 1
+      if getbufvar(n_544,a:val)
+        let c_542 += 1
       endif
     endif
   endfor
-  return c_538
+  return c_542
 endfunction
 
 function! ieie#move_to_buffer(bufnum)
-  for i_541 in range(0,winnr("$"))
-    let n_542 = winbufnr(i_541)
-    if a:bufnum == n_542
-      if i_541 != 0
-        execute i_541 "wincmd w"
+  for i_545 in range(0,winnr("$"))
+    let n_546 = winbufnr(i_545)
+    if a:bufnum == n_546
+      if i_545 != 0
+        execute i_545 "wincmd w"
       endif
-      return n_542
+      return n_546
     endif
   endfor
   return 0
 endfunction
 
 function! ieie#move_to_window(kind,val)
-  for i_543 in range(0,winnr("$"))
-    let n_544 = winbufnr(i_543)
-    if ((a:kind ==# "filetype")?((getbufvar(n_544,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_544,a:val)) : (0))))
-      if i_543 != 0
-        execute i_543 "wincmd w"
+  for i_547 in range(0,winnr("$"))
+    let n_548 = winbufnr(i_547)
+    if ((a:kind ==# "filetype")?((getbufvar(n_548,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_548,a:val)) : (0))))
+      if i_547 != 0
+        execute i_547 "wincmd w"
       endif
-      return n_544
+      return n_548
     endif
   endfor
   return 0
 endfunction
 
 function! ieie#find_buffer(kind,val)
-  for i_545 in range(0,winnr("$"))
-    let n_546 = winbufnr(i_545)
-    if ((a:kind ==# "filetype")?((getbufvar(n_546,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_546,a:val)) : (0))))
-      return n_546
+  for i_549 in range(0,winnr("$"))
+    let n_550 = winbufnr(i_549)
+    if ((a:kind ==# "filetype")?((getbufvar(n_550,"&filetype")) ==# a:val) : (((a:kind ==# "let")?(getbufvar(n_550,a:val)) : (0))))
+      return n_550
     endif
   endfor
   return 0
@@ -508,13 +541,13 @@ function! ieie#unmark_back_to_window()
 endfunction
 
 function! ieie#back_to_marked_window(...)
-  let mark_547 = get(a:000,0,"_ref_back")
-  for t_548 in range(1,tabpagenr("$"))
-    for w_549 in range(1,winnr("$"))
-      if gettabwinvar(t_548,w_549,mark_547)
-        execute "tabnext" t_548
-        execute w_549 "wincmd w"
-        execute "unlet! w:" . mark_547
+  let mark_551 = get(a:000,0,"_ref_back")
+  for t_552 in range(1,tabpagenr("$"))
+    for w_553 in range(1,winnr("$"))
+      if gettabwinvar(t_552,w_553,mark_551)
+        execute "tabnext" t_552
+        execute w_553 "wincmd w"
+        execute "unlet! w:" . mark_551
       endif
     endfor
   endfor

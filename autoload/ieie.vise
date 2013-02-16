@@ -27,20 +27,20 @@
 
 ;(defvar conf 
 ;  (dict
-;    (caption "vise REPL")
+;    (caption "gosh REPL")
 ;    (mark "gosh_repl")
 ;    (filetype "gosh-repl")
 ;    (syntax "gosh-repl")
 ;    (buffer-open "15:vs") ;text or funcref
 ;    (proc "proc") ;text or funcref
+;    (always-new #f or #t) ;default #f
+;    (pty #f) ;default #f
 ;    ;;callback
 ;    (stdout-printer "stdout") ;funcref
 ;    (stderr-printer "stderr") ;funcref
 ;    (exit-callback "exit") ;funcref
 ;    (buffer-enter "enter") ;funcref
 ;    (buffer-leave "leave") ;funcref
-;    ;;optional
-;    (always-new #f or #t) ;default #f
 ;    ))
 
 (defmacro get-def;{{{
@@ -54,8 +54,12 @@
   (if-let1 proc (get-def conf "proc")
     (if (== (type proc) str-type)
       (if (has_key conf "stderr-printer")
-        (vimproc#popen3 proc)
-        (vimproc#popen2 proc))
+        (if (get-def conf "pty")
+          (vimproc#ptyopen proc 3)
+          (vimproc#popen3 proc))
+        (if (get-def conf "pty")
+          (vimproc#ptyopen proc 2)
+          (vimproc#popen2 proc)))
       (proc))
     #f)) ;error;}}}
 
@@ -105,6 +109,7 @@
 (defun create-context (conf) ;{{{
   (dict 
     (proc (get-proc conf))
+    (pty (get-def conf "pty"))
     (stdout-printer (get-def conf "stdout-printer" default-printer))
     (stderr-printer (get-printer conf "stderr-printer"))
     (exit-callback (get-def conf "exit-callback"))
@@ -172,15 +177,15 @@
 
 (defun read-output (port timeout remain);{{{
   (let loop ([out ""]
-             [res ((ref port 'read) -1 timeout)])
+             [res (s+ remain ((ref port 'read) -1 timeout))])
     (if (empty res)
-      (array out remain)
+      (array out "")
       (loop (s+ out res)
             ((ref port 'read) -1 15)))));}}}
 
 (defun read-output-lines (port timeout remain);{{{
   (let loop ([out ""]
-             [res (s+ remain ((ref port'read) -1 timeout))])
+             [res (s+ remain ((ref port 'read) -1 timeout))])
     (if (empty res)
       (let1 index (strridx out "\n")
         (if (< index 0)
@@ -190,12 +195,23 @@
             (array "" (subseq out (+ index 1))))))
       (loop (s+ out res) ((ref port'read) 512 100)))));}}}
 
+(defun get-newline-mark (text);{{{
+  (let1 idx (stridx text "\r")
+    (if (== -1 idx)
+      "\n"
+      (if (== (ref text (+ idx 1)) "\n")
+        "\r\n"
+        "\r"))));}}}
+
+(defun line-split (text);{{{
+  (split text (get-newline-mark text)));}}}
+
 (defun get-user-input-text&output-text-list (ctx line text);{{{
   (let* ([prompt (ieie#get-prompt ctx line)]
          [line-text (getline line)]
          [user-input-text (subseq line-text (+ (stridx line-text prompt)
                                                (len prompt)))]
-         [text-list (split text "\n")])
+         [text-list (line-split text)])
     (unless (empty prompt)
       (if (zero? (len text-list))
         (add text-list prompt)
@@ -342,6 +358,15 @@
 ;;
 ;; command
 
+(defun discard-line (ctx);{{{
+  (when (and (ref ctx'proc'is_valid)
+          (ref ctx'proc'stdout'is_valid)
+          (not (ref ctx'proc'stdout'eof)))
+    (let* ([out ((ref ctx'proc'stdout'read) -1 250)]
+           [newline (get-newline-mark out)]
+           [lines (split out newline 1)])
+      (.= (ref ctx'stdout-remain) (join (subseq lines 1) newline)))));}}}
+
 (defun ieie#execute (text bufnum is-insert);{{{
   (let1 ctx (ieie#get-context bufnum)
     (switch-to-buffer
@@ -354,9 +379,11 @@
         (ref-set! ctx 'input-history-index 0)))
     (when (and is-insert (not (exists "changebuf"))) ;declare changebuf in switch-to-buffer
       (startinsert!))
+    (when (ref ctx'pty)
+      (discard-line ctx))
     (ieie#check-output ctx 100)));}}}
 
-(defun line-split (text-block);{{{
+(defun block-split (text-block);{{{
   (map
     (lambda (line) (substitute line "^[	 ]*" "" ""))
     (split text-block "\n")));}}}
@@ -375,14 +402,14 @@
     (if (and (isnot "" (getbufvar bufnum mark)) (==# v "v") (==# v "V"))
       (let* ([ctx (ieie#get-context bufnum)]
              [line a:firstline])
-        (dolist [line-text (line-split selected)]
+        (dolist [line-text (block-split selected)]
           ;chomp prompt
           (let1 prompt (ieie#get-prompt ctx line)
             (when (=~# line-text (s+ "^" prompt))
               (set! line-text (subseq line-text (len prompt)))))
           (.= text " " line-text)
           (inc! line)))
-      (set! text (join (line-split selected) " ")))
+      (set! text (join (block-split selected) " ")))
     (ieie#send-text opener mark text)));}}}
 
 (defun ieie#send-text (opener mark text);{{{
