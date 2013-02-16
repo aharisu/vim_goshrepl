@@ -1,5 +1,5 @@
 ;=============================================================================
-; FILE: ieie.vise
+; FILE: gosh_repl.vise
 ; AUTHOR:  aharisu <foo.yobina@gmail.com>
 ; Last Modified: 15 Feb 2013.
 ; License: MIT license;{{{
@@ -84,7 +84,6 @@
      (caption "gosh REPL")
      (filetype "gosh-repl")
      (syntax "gosh-repl")
-     (stdout-printer #f) ;default printer
      (buffer-enter buffer-enter)
      (buffer-leave buffer-leave)
      ,@args
