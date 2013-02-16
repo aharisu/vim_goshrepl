@@ -71,10 +71,10 @@
 
 (defmacro get-printer (conf slot);{{{
   `(if (has_key ,conf ,slot)
-     (if-let1 printer (ref ,conf ,slot)
-       printer
+     (if (isnot (ref ,conf ,slot) #f)
+       (ref ,conf ,slot)
        default-printer)
-     0));}}}
+     #f));}}}
 
 (defmacro get-reader (conf slot);{{{
   `(if (has_key ,conf ,slot)
@@ -86,8 +86,8 @@
 (defun create-context (conf) ;{{{
   (dict 
     (proc (get-proc conf))
-    (stdout-printer (get-printer conf "stdout-printer"));(get-def conf "stdout-printer" default-printer))
-    (stderr-printer (get-printer conf "stderr-printer")); (get-def conf "stderr-printer" default-printer))
+    (stdout-printer (get-def conf "stdout-printer" default-printer))
+    (stderr-printer (get-printer conf "stderr-printer"))
     (exit-callback (get-def conf "exit-callback"))
     (buffer-enter (get-def conf "buffer-enter"))
     (buffer-leave (get-def conf "buffer-leave"))
@@ -133,22 +133,22 @@
     (run-exit-callback ctx)
     (let1 output? #f
       ;;check standard error output
-      (when (isnot (ref ctx'stderr-printer) 0)
+      (if-let1 printer (ref ctx'stderr-printer)
         (let (([out remain] ((ref ctx'stderr-reader) (ref ctx'proc'stderr)
                                                      (get-rest timeout 0)
                                                      (ref ctx'stderr-remain))))
           (ref-set! ctx'stderr-remain remain)
           (unless (empty out)
-            ((ref ctx'stderr-printer) ctx out))))
+            (printer ctx out))))
       ;;check standard output 
-      (when (isnot (ref ctx'stdout-printer) 0)
+      (if-let1 printer (ref ctx'stdout-printer)
         (let (([out remain] ((ref ctx'stdout-reader) (ref ctx'proc'stdout)
                                                      (get-rest timeout 0)
                                                      (ref ctx'stdout-remain))))
           (ref-set! ctx'stdout-remain remain)
           (unless (empty out)
             (set! output? #t)
-            ((ref ctx'stdout-printer) ctx out))))
+            (printer ctx out))))
       output?)));}}}
 
 (defun read-output (port timeout remain);{{{
@@ -301,9 +301,7 @@
 (defun save-updatetime ();{{{
   (set! updatetime-save &updatetime)
   (when (> &updatetime g:gosh-updatetime)
-    (set! &updatetime g:gosh-updatetime)))
-  ;(when (> &updatetime g:ieie-updatetime)
-  ;  (set! &updatetime g:ieie-updatetime)));}}}
+    (set! &updatetime g:gosh-updatetime)));}}}
 
 (defun restore-updatetime ();{{{
   (when (< &updatetime updatetime-save)

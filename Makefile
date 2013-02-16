@@ -3,7 +3,9 @@
 GOSH           = "gosh"
 GENVISE        = "/ram/gprog/vise/autoload/genvise.scm"
 
-VIMFILES = autoload/gosh_repl.vim autoload/ieie.vim autoload/ieie_mapping.vim
+VIMFILES = autoload/ieie.vim autoload/ieie_mapping.vim \
+	   autoload/gosh_repl.vim \
+	   autoload/ghcieie.vim
 GENERATED = $(VIMFILES)
 
 #generate vise -> vim file
@@ -18,6 +20,8 @@ CONFIG_GENERATED = Makefile
 all : $(VIMFILES)
 
 autoload/gosh_repl.vim: autoload/gosh_repl.vise
+
+autoload/ghcieie.vim: autoload/ghcieie.vise
 
 autoload/ieie.vim: autoload/ieie.vise
 
