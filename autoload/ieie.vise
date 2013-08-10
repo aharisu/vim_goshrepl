@@ -394,7 +394,7 @@
     (begin0 @@
             (set! @@ tmp))));}}}
 
-(defun ieie#send_text_block (opener mark) :range;{{{
+(defun ieie#send-text-block (opener mark) :range;{{{
   (let ([v (visualmode)]
         [selected (get-visual-block)]
         [text ""]
@@ -407,9 +407,9 @@
           (let1 prompt (ieie#get-prompt ctx line)
             (when (=~# line-text (s+ "^" prompt))
               (set! line-text (subseq line-text (len prompt)))))
-          (.= text " " line-text)
+          (.= text "\n" line-text)
           (inc! line)))
-      (set! text (join (block-split selected) " ")))
+      (set! text (join (block-split selected) "\n")))
     (ieie#send-text opener mark text)));}}}
 
 (defun ieie#send-text (opener mark text);{{{
