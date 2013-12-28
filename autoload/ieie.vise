@@ -260,6 +260,13 @@
 
 (defvar context-list (dict))
 (defvar updatetime-save &updatetime)
+(defvar prev-check-output-time 0)
+
+(augroup ieie-plugin
+  (autocmd (CursorHold) * (cursor-hold "n"))
+  (autocmd (CursorHoldI) * (cursor-hold "i"))
+  (autocmd (CursorMoved) * (cursor-moved 0))
+  (autocmd (CursorMovedI) * (cursor-moved 0)))
 
 (defun ieie#get-context (bufnr);{{{
   (get-def context-list bufnr));}}}
@@ -279,10 +286,6 @@
       (autocmd (BufUnload) <buffer> (unload-buffer))
       (autocmd (BufEnter) <buffer> (buffer-enter))
       (autocmd (BufLeave) <buffer> (buffer-leave))
-      (autocmd (CursorHold) <buffer> (cursor-hold "n"))
-      (autocmd (CursorHoldI) <buffer> (cursor-hold "i"))
-      (autocmd (CursorMoved) <buffer> (cursor-moved 0))
-      (autocmd (CursorMovedI) <buffer> (cursor-moved 0))
       ))) ;}}}
 
 (defun initialize-context (bufnum ctx);{{{
@@ -331,8 +334,11 @@
     [(==# mode "i") (feedkeys (key-str "a\\<BS>") "n")]));}}}
 
 (defun cursor-moved (timeout);{{{
-  (dolist [ctx (values context-list)]
-    (ieie#check-output ctx timeout)));}}}
+  (when (and (!= 0 (length context-list))
+            (< 1 (- (localtime) prev-check-output-time)))
+    (dolist [ctx (values context-list)]
+      (ieie#check-output ctx timeout))
+    (set! prev-check-output-time (localtime))));}}}
 
 (defun buffer-enter ();{{{
   (save-updatetime)
