@@ -223,8 +223,12 @@
     (return))
   (switch-to-buffer
     (ref ctx 'bufnr)
-    (let* ([col (col ".")]
-           [line (line ".")]
+    (let* ([cur-col (col ".")]
+           [cur-line (line ".")]
+           [last-line (line "$")]
+           [last-col (col (array last-line "$"))]
+           [line last-line]
+           [col last-col]
            [(user-input-text text-list)
             (get-user-input-text&output-text-list ctx line text)]
            [prompt ""])
@@ -240,7 +244,9 @@
       (dec! line)
       (unless (empty prompt)
         (ieie#set-prompt ctx line prompt))
-      (cursor line col)
+      (if (and (== cur-col last-col) (== cur-line last-line))
+        (cursor line col)
+        (cursor cur-line cur-col))
       ;for screen update ...
       (winline)))) ;}}}
 
