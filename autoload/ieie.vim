@@ -193,7 +193,7 @@ function! s:get_newline_mark(text)
 endfunction
 
 function! s:line_split(text)
-  return split(a:text,s:get_newline_mark(a:text))
+  return split(a:text,s:get_newline_mark(a:text),1)
 endfunction
 
 function! s:get_user_input_text_26output_text_list(ctx,line,text)

@@ -204,7 +204,7 @@
         "\r"))));}}}
 
 (defun line-split (text);{{{
-  (split text (get-newline-mark text)));}}}
+  (split text (get-newline-mark text) #t));}}}
 
 (defun get-user-input-text&output-text-list (ctx line text);{{{
   (let* ([prompt (ieie#get-prompt ctx line)]
